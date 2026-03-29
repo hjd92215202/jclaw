@@ -26,15 +26,17 @@
         background: radial-gradient(circle at top right, #f7d9b6 0%, var(--bg) 45%),
           linear-gradient(130deg, #efe2d2, #f4efe6);
         min-height: 100vh;
+        overflow: hidden;
       }
 
       .shell {
-        max-width: 1200px;
-        margin: 24px auto;
-        padding: 0 16px;
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        padding: 12px;
         display: grid;
-        grid-template-columns: 360px 1fr;
-        gap: 16px;
+        grid-template-columns: minmax(420px, 36vw) 1fr;
+        gap: 12px;
       }
 
       .panel {
@@ -43,6 +45,17 @@
         border-radius: 16px;
         padding: 14px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .scroll-area {
+        overflow: auto;
+        min-height: 0;
+        padding-right: 4px;
       }
 
       h1 {
@@ -71,8 +84,18 @@
       }
 
       textarea {
-        min-height: 90px;
+        min-height: 140px;
         resize: vertical;
+        overflow: hidden;
+      }
+
+      .field-label {
+        display: block;
+        margin: 6px 0 6px;
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 600;
+        letter-spacing: 0.02em;
       }
 
       button {
@@ -98,11 +121,20 @@
       }
 
       .list {
-        max-height: 280px;
+        max-height: none;
         overflow: auto;
         border-top: 1px dashed var(--line);
         margin-top: 8px;
         padding-top: 8px;
+      }
+
+      .list.task-list {
+        min-height: 160px;
+      }
+
+      .list.exec-list {
+        min-height: 220px;
+        max-height: 38vh;
       }
 
       .item {
@@ -140,8 +172,13 @@
         color: #f4f0eb;
         padding: 10px;
         border-radius: 10px;
-        max-height: 240px;
+        max-height: none;
         overflow: auto;
+      }
+
+      #timeline {
+        min-height: 220px;
+        max-height: 38vh;
       }
 
       .muted {
@@ -150,8 +187,16 @@
       }
 
       @media (max-width: 900px) {
+        body {
+          overflow: auto;
+        }
         .shell {
+          height: auto;
           grid-template-columns: 1fr;
+          padding: 10px;
+        }
+        .panel {
+          height: auto;
         }
       }
     </style>
@@ -160,52 +205,120 @@
     <div class="shell">
       <section class="panel">
         <h1>AI Workbench</h1>
-        <h2>新建任务</h2>
-        <input id="title" placeholder="任务标题" />
-        <textarea id="goal" placeholder="目标描述"></textarea>
-        <textarea id="constraints" placeholder="约束（每行一条，可选）"></textarea>
-        <textarea id="criteria" placeholder="验收标准（每行一条，可选）"></textarea>
-        <button id="create">创建任务</button>
-        <div class="muted" id="createResult"></div>
+        <div class="scroll-area">
+          <h2>新建任务</h2>
+          <label class="field-label" for="title">任务标题</label>
+          <input id="title" placeholder="任务标题" />
+          <label class="field-label" for="goal">目标描述</label>
+          <textarea id="goal" placeholder="目标描述"></textarea>
+          <label class="field-label" for="constraints">执行约束（防跑飞）</label>
+          <textarea id="constraints" placeholder="约束（每行一条，可选）"></textarea>
+          <label class="field-label" for="criteria">验收标准（结果定义）</label>
+          <textarea id="criteria" placeholder="验收标准（每行一条，可选）"></textarea>
+          <label class="field-label">预算策略</label>
+          <div class="grid">
+            <div>
+              <label class="field-label" for="hardLimit">硬预算上限</label>
+            <input id="hardLimit" type="number" min="1" step="1" placeholder="硬预算上限" />
+            </div>
+            <div>
+              <label class="field-label" for="softLimit">软预算上限</label>
+            <input id="softLimit" type="number" min="1" step="1" placeholder="软预算上限" />
+            </div>
+            <div>
+              <label class="field-label" for="circuitBreakerAt">熔断阈值</label>
+            <input id="circuitBreakerAt" type="number" min="1" step="1" placeholder="熔断阈值" />
+            </div>
+            <div>
+              <label class="field-label" for="fallbackModel">降级模型</label>
+            <input id="fallbackModel" placeholder="降级模型" />
+            </div>
+          </div>
+          <button id="resetPreset" class="btn-soft">恢复系统预设</button>
+          <button id="create">创建任务</button>
+          <div class="muted" id="createResult"></div>
 
-        <h2 style="margin-top: 16px">任务列表</h2>
-        <button class="btn-soft" id="refreshTasks">刷新</button>
-        <div id="taskList" class="list"></div>
+          <h2 style="margin-top: 16px">任务列表</h2>
+          <button class="btn-soft" id="refreshTasks">刷新</button>
+          <div id="taskList" class="list task-list"></div>
+        </div>
       </section>
 
       <section class="panel">
-        <h2>任务详情</h2>
-        <div id="taskMeta" class="muted">请选择任务</div>
+        <div class="scroll-area">
+          <h2>任务详情</h2>
+          <div id="taskMeta" class="muted">请选择任务</div>
 
-        <div class="grid" style="margin-top: 10px">
-          <select id="roleSelect">
-            <option>Architect</option>
-            <option>Designer</option>
-            <option>SeniorDeveloper</option>
-            <option>QA</option>
-            <option>Ops</option>
-            <option>PM</option>
-          </select>
-          <button id="runRole" class="btn-alt">运行角色</button>
-          <button id="approve">PM通过</button>
-          <button id="reject" class="btn-soft">PM驳回</button>
-          <button id="retry" class="btn-alt">重试节点</button>
-          <button id="rollback" class="btn-soft">回滚到检查点</button>
+          <div class="grid" style="margin-top: 10px">
+            <select id="roleSelect">
+              <option value="Architect">架构师</option>
+              <option value="Designer">设计师</option>
+              <option value="SeniorDeveloper">高级开发</option>
+              <option value="QA">测试工程师</option>
+              <option value="Ops">运维工程师</option>
+              <option value="PM">产品经理</option>
+            </select>
+            <button id="runRole" class="btn-alt">运行角色</button>
+            <button id="approve">PM通过</button>
+            <button id="reject" class="btn-soft">PM驳回</button>
+            <button id="retry" class="btn-alt">重试节点</button>
+            <button id="rollback" class="btn-soft">回滚到检查点</button>
+          </div>
+          <div class="muted" id="opResult"></div>
+
+          <h2 style="margin-top: 14px">执行记录</h2>
+          <button class="btn-soft" id="refreshExec">刷新执行记录</button>
+          <div id="execList" class="list exec-list"></div>
+
+          <h2 style="margin-top: 14px">时间线</h2>
+          <button class="btn-soft" id="refreshTimeline">刷新时间线</button>
+          <pre id="timeline"></pre>
         </div>
-
-        <h2 style="margin-top: 14px">执行记录</h2>
-        <button class="btn-soft" id="refreshExec">刷新执行记录</button>
-        <div id="execList" class="list"></div>
-
-        <h2 style="margin-top: 14px">时间线</h2>
-        <button class="btn-soft" id="refreshTimeline">刷新时间线</button>
-        <pre id="timeline"></pre>
       </section>
     </div>
 
     <script>
-      const state = { taskId: null };
+      const state = { taskId: null, currentTask: null, preset: null };
       const $ = (id) => document.getElementById(id);
+      const roleLabel = {
+        system: "系统",
+        PM: "产品经理",
+        Architect: "架构师",
+        Designer: "设计师",
+        SeniorDeveloper: "高级开发",
+        QA: "测试工程师",
+        Ops: "运维工程师"
+      };
+      const statusLabel = {
+        Draft: "草稿",
+        InProgress: "进行中",
+        Blocked: "阻塞",
+        WaitingPM: "待产品经理审批",
+        Approved: "已通过",
+        Rejected: "已驳回",
+        Done: "已完成",
+        Pending: "排队中",
+        Running: "执行中",
+        Timeout: "超时",
+        Retrying: "重试中",
+        Failed: "失败",
+        Succeeded: "成功",
+        CircuitOpen: "熔断"
+      };
+
+      function textRole(role) {
+        return roleLabel[role] || role;
+      }
+
+      function textStatus(status) {
+        return statusLabel[status] || status;
+      }
+
+      function setOpResult(message, isError = false) {
+        const el = $("opResult");
+        el.style.color = isError ? "#b33a16" : "#615547";
+        el.textContent = message || "";
+      }
 
       async function api(path, options = {}) {
         const resp = await fetch(path, {
@@ -224,6 +337,42 @@
           .filter(Boolean);
       }
 
+      function toNumber(value, fallback) {
+        const n = Number(value);
+        return Number.isFinite(n) && n > 0 ? n : fallback;
+      }
+
+      function autoResizeTextarea(el) {
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = `${el.scrollHeight}px`;
+      }
+
+      function bindAutoResize(id) {
+        const el = $(id);
+        if (!el) return;
+        el.addEventListener("input", () => autoResizeTextarea(el));
+        autoResizeTextarea(el);
+      }
+
+      function applyPresetToForm(preset) {
+        if (!preset) return;
+        $("constraints").value = (preset.constraints || []).join("\n");
+        $("criteria").value = (preset.acceptanceCriteria || []).join("\n");
+        $("hardLimit").value = String(preset.budgetPolicy?.hardLimit ?? 20);
+        $("softLimit").value = String(preset.budgetPolicy?.softLimit ?? 10);
+        $("circuitBreakerAt").value = String(preset.budgetPolicy?.circuitBreakerAt ?? 20);
+        $("fallbackModel").value = preset.budgetPolicy?.fallbackModel || "gpt-5.4-mini";
+        autoResizeTextarea($("constraints"));
+        autoResizeTextarea($("criteria"));
+      }
+
+      async function loadPreset() {
+        const preset = await api("/presets/defaults");
+        state.preset = preset;
+        applyPresetToForm(preset);
+      }
+
       async function loadTasks() {
         const tasks = await api("/tasks");
         const root = $("taskList");
@@ -231,25 +380,35 @@
         tasks.forEach((task) => {
           const node = document.createElement("div");
           node.className = `item ${task.id === state.taskId ? "active" : ""}`;
-          node.innerHTML = `<strong>${task.title}</strong><span class="tag">${task.status}</span><div class="muted">${task.id}</div>`;
-          node.onclick = () => {
+          const currentRole = task.roles?.[Math.min(task.currentRoleIndex, (task.roles?.length ?? 1) - 1)];
+          node.innerHTML = `<strong>${task.title}</strong><span class="tag">${textStatus(task.status)}</span><div class="muted">${task.id} · 当前角色：${textRole(currentRole)}</div>`;
+          node.onclick = async () => {
             state.taskId = task.id;
-            showTaskMeta(task);
-            loadTasks();
+            await loadTaskDetail(task.id);
+            await loadTasks();
           };
           root.appendChild(node);
         });
       }
 
       function showTaskMeta(task) {
+        const currentRole = task.roles[Math.min(task.currentRoleIndex, task.roles.length - 1)];
+        $("roleSelect").value = currentRole;
         $("taskMeta").innerHTML = `
           <div><strong>${task.title}</strong></div>
           <div>目标: ${task.goal}</div>
-          <div>当前角色索引: ${task.currentRoleIndex}</div>
+          <div>当前角色: ${textRole(currentRole)}</div>
           <div>预算消耗: ${task.budgetConsumed}</div>
           <div>分支: ${task.branchName}</div>
           <div>worktree: ${task.worktreePath}</div>
         `;
+      }
+
+      async function loadTaskDetail(taskId) {
+        const task = await api(`/tasks/${taskId}`);
+        state.currentTask = task;
+        showTaskMeta(task);
+        return task;
       }
 
       async function loadExecutions() {
@@ -264,7 +423,7 @@
             const node = document.createElement("div");
             node.className = "item";
             node.innerHTML = `
-            <div><strong>${row.role}</strong> <span class="tag">${row.status}</span></div>
+            <div><strong>${textRole(row.role)}</strong> <span class="tag">${textStatus(row.status)}</span></div>
             <div class="muted">attempt=${row.attempt} cost=${row.estimatedCost}</div>
             <pre>${(row.stdout || row.stderr || "").slice(0, 240)}</pre>
           `;
@@ -276,23 +435,32 @@
         if (!state.taskId) return;
         const rows = await api(`/tasks/${state.taskId}/timeline`);
         $("timeline").textContent = rows
-          .map((r) => `[${r.timestamp}] ${r.type} (${r.actor}) ${r.detail}`)
+          .map((r) => `[${r.timestamp}] ${r.type} (${textRole(r.actor)}) ${r.detail}`)
           .join("\n");
       }
 
       $("create").onclick = async () => {
         try {
+          const presetBudget = state.preset?.budgetPolicy || {};
           const task = await api("/tasks", {
             method: "POST",
             body: JSON.stringify({
               title: $("title").value,
               goal: $("goal").value,
               constraints: pickLines($("constraints").value),
-              acceptanceCriteria: pickLines($("criteria").value)
+              acceptanceCriteria: pickLines($("criteria").value),
+              budgetPolicy: {
+                hardLimit: toNumber($("hardLimit").value, presetBudget.hardLimit ?? 20),
+                softLimit: toNumber($("softLimit").value, presetBudget.softLimit ?? 10),
+                circuitBreakerAt: toNumber($("circuitBreakerAt").value, presetBudget.circuitBreakerAt ?? 20),
+                fallbackModel: $("fallbackModel").value?.trim() || presetBudget.fallbackModel || "gpt-5.4-mini"
+              }
             })
           });
           state.taskId = task.id;
+          state.currentTask = task;
           $("createResult").textContent = `创建成功: ${task.id}`;
+          setOpResult("");
           showTaskMeta(task);
           await loadTasks();
         } catch (err) {
@@ -303,60 +471,111 @@
       $("runRole").onclick = async () => {
         if (!state.taskId) return alert("请先选任务");
         const role = $("roleSelect").value;
-        await api(`/tasks/${state.taskId}/roles/${role}/run`, { method: "POST" });
-        await loadTasks();
-        await loadExecutions();
-        await loadTimeline();
+        try {
+          const task = state.currentTask || (await loadTaskDetail(state.taskId));
+          const currentRole = task.roles[Math.min(task.currentRoleIndex, task.roles.length - 1)];
+          if (role !== currentRole) {
+            setOpResult(`当前应先执行：${textRole(currentRole)}。你选择的是：${textRole(role)}。`, true);
+            return;
+          }
+
+          await api(`/tasks/${state.taskId}/roles/${role}/run`, { method: "POST" });
+          setOpResult(`已触发${textRole(role)}执行。`);
+          await loadTaskDetail(state.taskId);
+          await loadTasks();
+          await loadExecutions();
+          await loadTimeline();
+        } catch (err) {
+          setOpResult(err.message || "执行失败", true);
+        }
       };
 
       $("approve").onclick = async () => {
         if (!state.taskId) return alert("请先选任务");
-        const task = await api(`/tasks/${state.taskId}/approve`, {
-          method: "POST",
-          body: JSON.stringify({ decision: "Approve" })
-        });
-        showTaskMeta(task);
-        await loadTasks();
-        await loadTimeline();
+        try {
+          const task = await api(`/tasks/${state.taskId}/approve`, {
+            method: "POST",
+            body: JSON.stringify({ decision: "Approve" })
+          });
+          state.currentTask = task;
+          setOpResult("PM 已通过当前阶段。");
+          showTaskMeta(task);
+          await loadTasks();
+          await loadTimeline();
+        } catch (err) {
+          setOpResult(err.message || "审批失败", true);
+        }
       };
 
       $("reject").onclick = async () => {
         if (!state.taskId) return alert("请先选任务");
-        const reason = prompt("驳回理由", "需要优化用户体验");
-        const task = await api(`/tasks/${state.taskId}/approve`, {
-          method: "POST",
-          body: JSON.stringify({ decision: "Reject", reason })
-        });
-        showTaskMeta(task);
-        await loadTasks();
-        await loadTimeline();
+        try {
+          const reason = prompt("驳回理由", "需要优化用户体验");
+          const task = await api(`/tasks/${state.taskId}/approve`, {
+            method: "POST",
+            body: JSON.stringify({ decision: "Reject", reason })
+          });
+          state.currentTask = task;
+          setOpResult("PM 已驳回当前阶段并回滚。");
+          showTaskMeta(task);
+          await loadTasks();
+          await loadTimeline();
+        } catch (err) {
+          setOpResult(err.message || "驳回失败", true);
+        }
       };
 
       $("retry").onclick = async () => {
         if (!state.taskId) return alert("请先选任务");
-        await api(`/tasks/${state.taskId}/retry`, {
-          method: "POST",
-          body: JSON.stringify({})
-        });
-        await loadExecutions();
-        await loadTimeline();
+        try {
+          await api(`/tasks/${state.taskId}/retry`, {
+            method: "POST",
+            body: JSON.stringify({})
+          });
+          setOpResult("已触发重试。");
+          await loadTaskDetail(state.taskId);
+          await loadExecutions();
+          await loadTimeline();
+        } catch (err) {
+          setOpResult(err.message || "重试失败", true);
+        }
       };
 
       $("rollback").onclick = async () => {
         if (!state.taskId) return alert("请先选任务");
-        await api(`/tasks/${state.taskId}/rollback`, {
-          method: "POST",
-          body: JSON.stringify({ mode: "AutoToCheckpoint" })
-        });
-        await loadTasks();
-        await loadTimeline();
+        try {
+          const task = await api(`/tasks/${state.taskId}/rollback`, {
+            method: "POST",
+            body: JSON.stringify({ mode: "AutoToCheckpoint" })
+          });
+          state.currentTask = task;
+          setOpResult("已回滚到检查点。");
+          await loadTasks();
+          await loadTimeline();
+          showTaskMeta(task);
+        } catch (err) {
+          setOpResult(err.message || "回滚失败", true);
+        }
       };
 
       $("refreshTasks").onclick = loadTasks;
       $("refreshExec").onclick = loadExecutions;
       $("refreshTimeline").onclick = loadTimeline;
+      $("resetPreset").onclick = () => {
+        applyPresetToForm(state.preset);
+        setOpResult("已恢复系统预设。");
+      };
 
-      loadTasks();
+      loadPreset()
+        .then(() => loadTasks())
+        .catch((err) => {
+          setOpResult(err.message || "加载预设失败", true);
+          loadTasks();
+        });
+
+      bindAutoResize("goal");
+      bindAutoResize("constraints");
+      bindAutoResize("criteria");
     </script>
   </body>
 </html>

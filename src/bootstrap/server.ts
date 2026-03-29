@@ -1,5 +1,5 @@
 import path from "node:path";
-import { createApp } from "./app.js";
+import { createApp } from "../presentation/http/create-app.js";
 
 const port = Number(process.env.PORT ?? "7788");
 const repoPath = process.env.REPO_PATH ? path.resolve(process.env.REPO_PATH) : process.cwd();

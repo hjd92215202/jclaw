@@ -1,4 +1,4 @@
-import type { ChatMessage, ExecutionRecord, Task } from "./types.js";
+import type { ChatMessage, ExecutionRecord, Task } from "../../domain/types.js";
 
 export class InMemoryStore {
   private tasks = new Map<string, Task>();

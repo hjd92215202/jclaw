@@ -6,7 +6,7 @@
 
 - Web 工作台：任务创建、角色执行、PM 审批与回滚操作
 - 编排器（Orchestrator）：六角色流程编排  
-  `Architect`、`Designer`、`SeniorDeveloper`、`QA`、`Ops`、`PM`
+  `架构师`、`设计师`、`高级开发`、`测试工程师`、`运维工程师`、`产品经理`
 - Codex 执行适配层：统一命令协议、超时控制、重试判断
 - 全链路审计：命令、状态、输出摘要、差异摘要、成本估算
 - Git 工作隔离：每任务独立 `worktree`
@@ -41,6 +41,7 @@ npm run dev
 - `POST /chat/:taskId/message`：角色协作消息写入
 - `GET /artifacts/:taskId`：查看成功阶段产物摘要
 - `POST /models/route-test`：执行引擎健康检查（Codex）
+- `GET /presets/defaults`：获取系统预设（约束、验收标准、预算策略）
 
 ## 测试
 
@@ -58,3 +59,15 @@ npm test
 
 - 仓库内项目文档统一使用 **UTF-8 编码**。
 - 新增文档默认使用 **中文**（除非你明确指定英文版）。
+
+## 项目分层
+
+```text
+src/
+  bootstrap/            # 启动入口
+  presentation/http/    # API 路由与请求校验
+  application/          # 编排流程与业务用例
+  domain/               # 领域模型、角色定义
+  infrastructure/       # 执行器、Git、存储等基础设施实现
+  shared/               # 通用工具函数
+```

@@ -11,6 +11,44 @@ export interface RoleContract {
 
 export const ROLE_CHAIN: Role[] = ["Architect", "Designer", "SeniorDeveloper", "QA", "Ops", "PM"];
 
+export const ROLE_LABELS: Record<Role, string> = {
+  Architect: "架构师",
+  Designer: "设计师",
+  SeniorDeveloper: "高级开发",
+  QA: "测试工程师",
+  Ops: "运维工程师",
+  PM: "产品经理"
+};
+
+const ROLE_INPUT_ALIASES: Record<string, Role> = {
+  PM: "PM",
+  产品经理: "PM",
+  pm: "PM",
+  architect: "Architect",
+  Architect: "Architect",
+  架构师: "Architect",
+  designer: "Designer",
+  Designer: "Designer",
+  设计师: "Designer",
+  seniordeveloper: "SeniorDeveloper",
+  SeniorDeveloper: "SeniorDeveloper",
+  seniorDeveloper: "SeniorDeveloper",
+  高级开发: "SeniorDeveloper",
+  qa: "QA",
+  QA: "QA",
+  测试: "QA",
+  测试工程师: "QA",
+  ops: "Ops",
+  Ops: "Ops",
+  运维: "Ops",
+  运维工程师: "Ops"
+};
+
+export function parseRoleInput(input: string): Role | undefined {
+  const trimmed = input.trim();
+  return ROLE_INPUT_ALIASES[trimmed] ?? ROLE_INPUT_ALIASES[trimmed.toLowerCase()];
+}
+
 export const ROLE_CONTRACTS: Record<Role, RoleContract> = {
   PM: {
     role: "PM",

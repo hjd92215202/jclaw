@@ -1,11 +1,8 @@
 import path from "node:path";
-import { CodexExecutor } from "./codex-executor.js";
-import { GitService } from "./git.js";
-import { ROLE_CHAIN, ROLE_CONTRACTS } from "./roles.js";
-import { InMemoryStore } from "./store.js";
+import { ROLE_CHAIN, ROLE_CONTRACTS, ROLE_LABELS } from "../domain/roles.js";
+import { DEFAULT_TASK_PRESET } from "../domain/task-presets.js";
 import type {
   ApprovalInput,
-  BudgetPolicy,
   ChatMessage,
   ExecutionRecord,
   ExecutionRequest,
@@ -15,15 +12,11 @@ import type {
   Role,
   Task,
   TaskInput
-} from "./types.js";
-import { id, nowIso } from "./utils.js";
-
-const DEFAULT_BUDGET: BudgetPolicy = {
-  hardLimit: 20,
-  softLimit: 10,
-  fallbackModel: "gpt-5.4-mini",
-  circuitBreakerAt: 20
-};
+} from "../domain/types.js";
+import { CodexExecutor } from "../infrastructure/execution/codex-executor.js";
+import { GitService } from "../infrastructure/git/git-service.js";
+import { InMemoryStore } from "../infrastructure/store/in-memory-store.js";
+import { id, nowIso } from "../shared/utils.js";
 
 export class Orchestrator {
   constructor(
@@ -39,7 +32,7 @@ export class Orchestrator {
   getTask(taskId: string): Task {
     const task = this.store.getTask(taskId);
     if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
+      throw new Error(`任务不存在：${taskId}`);
     }
     return task;
   }
@@ -86,9 +79,9 @@ export class Orchestrator {
       updatedAt: now,
       rejectedCount: 0,
       budgetConsumed: 0,
-      budgetPolicy: { ...DEFAULT_BUDGET, ...input.budgetPolicy },
-      constraints: input.constraints ?? [],
-      acceptanceCriteria: input.acceptanceCriteria ?? [],
+      budgetPolicy: { ...DEFAULT_TASK_PRESET.budgetPolicy, ...input.budgetPolicy },
+      constraints: this.withPreset(input.constraints, DEFAULT_TASK_PRESET.constraints),
+      acceptanceCriteria: this.withPreset(input.acceptanceCriteria, DEFAULT_TASK_PRESET.acceptanceCriteria),
       events: []
     };
 
@@ -109,7 +102,7 @@ export class Orchestrator {
     const role = explicitRole ?? this.getCurrentRole(task);
     const expected = this.getCurrentRole(task);
     if (role !== expected) {
-      throw new Error(`Role ${role} is not active. Current role is ${expected}.`);
+      throw new Error(`当前不能执行${ROLE_LABELS[role]}，请先执行${ROLE_LABELS[expected]}。`);
     }
 
     if (task.budgetConsumed >= task.budgetPolicy.circuitBreakerAt) {
@@ -123,7 +116,7 @@ export class Orchestrator {
         detail: `Budget circuit opened at ${task.budgetConsumed}`
       });
       this.store.saveTask(task);
-      throw new Error("Budget circuit breaker is open.");
+      throw new Error("预算熔断已触发，请先调整预算或人工干预。");
     }
 
     const contract = ROLE_CONTRACTS[role];
@@ -244,7 +237,7 @@ export class Orchestrator {
     }
 
     if (!lastExecution) {
-      throw new Error("Execution ended unexpectedly.");
+      throw new Error("执行流程异常结束。");
     }
     return lastExecution;
   }
@@ -327,7 +320,7 @@ export class Orchestrator {
     const task = this.getTask(taskId);
     const target = input.mode === "AutoToCheckpoint" ? task.lastApprovedCommit : input.targetCommit;
     if (!target) {
-      throw new Error("targetCommit is required for ManualSelectCommit.");
+      throw new Error("手动回滚模式必须提供 targetCommit。");
     }
 
     await this.git.rollbackTo(task.worktreePath, target);
@@ -347,5 +340,13 @@ export class Orchestrator {
 
   private getCurrentRole(task: Task): Role {
     return task.roles[Math.min(task.currentRoleIndex, task.roles.length - 1)];
+  }
+
+  private withPreset(value: string[] | undefined, preset: string[]): string[] {
+    if (!value || value.length === 0) {
+      return [...preset];
+    }
+    const normalized = value.map((item) => item.trim()).filter(Boolean);
+    return normalized.length > 0 ? normalized : [...preset];
   }
 }

@@ -5,8 +5,8 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js",
-    "dev": "tsx watch src/server.ts"
+    "start": "node dist/src/bootstrap/server.js",
+    "dev": "tsx watch src/bootstrap/server.ts"
   },
   "keywords": [],
   "author": "",

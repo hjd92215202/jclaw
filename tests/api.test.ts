@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createApp } from "../src/app.js";
+import { createApp } from "../src/presentation/http/create-app.js";
 
 describe("AI Workbench API", () => {
   let app: ReturnType<typeof createApp>;

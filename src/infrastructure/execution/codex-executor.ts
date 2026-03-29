@@ -1,9 +1,9 @@
 import { constants } from "node:fs";
 import { access } from "node:fs/promises";
-import { runCommand } from "./command.js";
-import { ROLE_CONTRACTS } from "./roles.js";
-import type { ExecutionRequest, ExecutionStatus } from "./types.js";
-import { truncate } from "./utils.js";
+import { ROLE_CONTRACTS } from "../../domain/roles.js";
+import type { ExecutionRequest, ExecutionStatus } from "../../domain/types.js";
+import { truncate } from "../../shared/utils.js";
+import { runCommand } from "./command-runner.js";
 
 export interface CodexExecutionOutput {
   command: string;

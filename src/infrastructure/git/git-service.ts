@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { runCommand } from "./command.js";
+import { runCommand } from "../execution/command-runner.js";
 
 interface WorkspaceResult {
   branchName: string;

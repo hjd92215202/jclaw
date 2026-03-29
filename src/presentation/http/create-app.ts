@@ -2,11 +2,13 @@ import express from "express";
 import cors from "cors";
 import path from "node:path";
 import { z } from "zod";
-import { InMemoryStore } from "./store.js";
-import { GitService } from "./git.js";
-import { CodexExecutor } from "./codex-executor.js";
-import { Orchestrator } from "./orchestrator.js";
-import type { Role } from "./types.js";
+import { Orchestrator } from "../../application/orchestrator.js";
+import { parseRoleInput } from "../../domain/roles.js";
+import { DEFAULT_TASK_PRESET } from "../../domain/task-presets.js";
+import type { Role } from "../../domain/types.js";
+import { CodexExecutor } from "../../infrastructure/execution/codex-executor.js";
+import { GitService } from "../../infrastructure/git/git-service.js";
+import { InMemoryStore } from "../../infrastructure/store/in-memory-store.js";
 
 const taskInputSchema = z.object({
   title: z.string().min(1),
@@ -23,7 +25,11 @@ const taskInputSchema = z.object({
     .optional()
 });
 
-const roleSchema = z.enum(["PM", "Architect", "Designer", "SeniorDeveloper", "QA", "Ops"]);
+const roleSchema = z
+  .string()
+  .min(1)
+  .transform((value) => parseRoleInput(value))
+  .refine((value): value is Role => Boolean(value), { message: "无效角色，请使用中文角色名或系统角色ID。" });
 
 const approvalSchema = z.object({
   decision: z.enum(["Approve", "Reject", "Rework"]),
@@ -40,7 +46,7 @@ const rollbackSchema = z.object({
 });
 
 const messageSchema = z.object({
-  role: z.union([roleSchema, z.literal("PM")]),
+  role: roleSchema,
   content: z.string().min(1)
 });
 
@@ -60,6 +66,10 @@ export function createApp(repoPath: string): express.Express {
 
   app.get("/tasks", (_req, res) => {
     res.json(orchestrator.listTasks());
+  });
+
+  app.get("/presets/defaults", (_req, res) => {
+    res.json(DEFAULT_TASK_PRESET);
   });
 
   app.post("/tasks", async (req, res, next) => {
@@ -92,7 +102,7 @@ export function createApp(repoPath: string): express.Express {
 
   app.post("/tasks/:id/roles/:role/run", async (req, res, next) => {
     try {
-      const role = roleSchema.parse(req.params.role) as Role;
+      const role = roleSchema.parse(req.params.role);
       const execution = await orchestrator.runRole(req.params.id, role);
       res.json(execution);
     } catch (error) {
@@ -194,7 +204,7 @@ export function createApp(repoPath: string): express.Express {
 
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: "Invalid request", issues: error.issues });
+      res.status(400).json({ message: "请求参数不正确", issues: error.issues });
       return;
     }
 
@@ -203,7 +213,7 @@ export function createApp(repoPath: string): express.Express {
       return;
     }
 
-    res.status(500).json({ message: "Unknown server error" });
+    res.status(500).json({ message: "服务端未知错误" });
   });
 
   return app;
