@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Workbench</title>
+    <style>
+      :root {
+        --bg: #f4efe6;
+        --card: #fff8ee;
+        --ink: #1f1f1f;
+        --muted: #615547;
+        --accent: #bb5a2d;
+        --accent-2: #2f6b73;
+        --line: #decfb8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Avenir Next", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+        color: var(--ink);
+        background: radial-gradient(circle at top right, #f7d9b6 0%, var(--bg) 45%),
+          linear-gradient(130deg, #efe2d2, #f4efe6);
+        min-height: 100vh;
+      }
+
+      .shell {
+        max-width: 1200px;
+        margin: 24px auto;
+        padding: 0 16px;
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 24px;
+        letter-spacing: 0.03em;
+      }
+
+      h2 {
+        font-size: 16px;
+        margin: 0 0 10px;
+        color: var(--accent-2);
+      }
+
+      input,
+      textarea,
+      select,
+      button {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 8px;
+        font: inherit;
+        background: #fffdf9;
+      }
+
+      textarea {
+        min-height: 90px;
+        resize: vertical;
+      }
+
+      button {
+        border: none;
+        background: var(--accent);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.12s ease, opacity 0.12s ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+        opacity: 0.93;
+      }
+
+      .btn-alt {
+        background: var(--accent-2);
+      }
+
+      .btn-soft {
+        background: #7f7060;
+      }
+
+      .list {
+        max-height: 280px;
+        overflow: auto;
+        border-top: 1px dashed var(--line);
+        margin-top: 8px;
+        padding-top: 8px;
+      }
+
+      .item {
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        margin-bottom: 8px;
+        background: #fffdf9;
+      }
+
+      .item.active {
+        border-color: var(--accent);
+      }
+
+      .tag {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 12px;
+        background: #f8e4d7;
+        color: #904022;
+        margin-left: 6px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        background: #1f1c1a;
+        color: #f4f0eb;
+        padding: 10px;
+        border-radius: 10px;
+        max-height: 240px;
+        overflow: auto;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 900px) {
+        .shell {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <section class="panel">
+        <h1>AI Workbench</h1>
+        <h2>新建任务</h2>
+        <input id="title" placeholder="任务标题" />
+        <textarea id="goal" placeholder="目标描述"></textarea>
+        <textarea id="constraints" placeholder="约束（每行一条，可选）"></textarea>
+        <textarea id="criteria" placeholder="验收标准（每行一条，可选）"></textarea>
+        <button id="create">创建任务</button>
+        <div class="muted" id="createResult"></div>
+
+        <h2 style="margin-top: 16px">任务列表</h2>
+        <button class="btn-soft" id="refreshTasks">刷新</button>
+        <div id="taskList" class="list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>任务详情</h2>
+        <div id="taskMeta" class="muted">请选择任务</div>
+
+        <div class="grid" style="margin-top: 10px">
+          <select id="roleSelect">
+            <option>Architect</option>
+            <option>Designer</option>
+            <option>SeniorDeveloper</option>
+            <option>QA</option>
+            <option>Ops</option>
+            <option>PM</option>
+          </select>
+          <button id="runRole" class="btn-alt">运行角色</button>
+          <button id="approve">PM通过</button>
+          <button id="reject" class="btn-soft">PM驳回</button>
+          <button id="retry" class="btn-alt">重试节点</button>
+          <button id="rollback" class="btn-soft">回滚到检查点</button>
+        </div>
+
+        <h2 style="margin-top: 14px">执行记录</h2>
+        <button class="btn-soft" id="refreshExec">刷新执行记录</button>
+        <div id="execList" class="list"></div>
+
+        <h2 style="margin-top: 14px">时间线</h2>
+        <button class="btn-soft" id="refreshTimeline">刷新时间线</button>
+        <pre id="timeline"></pre>
+      </section>
+    </div>
+
+    <script>
+      const state = { taskId: null };
+      const $ = (id) => document.getElementById(id);
+
+      async function api(path, options = {}) {
+        const resp = await fetch(path, {
+          headers: { "Content-Type": "application/json" },
+          ...options
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data.message || "Request failed");
+        return data;
+      }
+
+      function pickLines(value) {
+        return value
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
+      async function loadTasks() {
+        const tasks = await api("/tasks");
+        const root = $("taskList");
+        root.innerHTML = "";
+        tasks.forEach((task) => {
+          const node = document.createElement("div");
+          node.className = `item ${task.id === state.taskId ? "active" : ""}`;
+          node.innerHTML = `<strong>${task.title}</strong><span class="tag">${task.status}</span><div class="muted">${task.id}</div>`;
+          node.onclick = () => {
+            state.taskId = task.id;
+            showTaskMeta(task);
+            loadTasks();
+          };
+          root.appendChild(node);
+        });
+      }
+
+      function showTaskMeta(task) {
+        $("taskMeta").innerHTML = `
+          <div><strong>${task.title}</strong></div>
+          <div>目标: ${task.goal}</div>
+          <div>当前角色索引: ${task.currentRoleIndex}</div>
+          <div>预算消耗: ${task.budgetConsumed}</div>
+          <div>分支: ${task.branchName}</div>
+          <div>worktree: ${task.worktreePath}</div>
+        `;
+      }
+
+      async function loadExecutions() {
+        if (!state.taskId) return;
+        const rows = await api(`/tasks/${state.taskId}/executions`);
+        const root = $("execList");
+        root.innerHTML = "";
+        rows
+          .slice()
+          .reverse()
+          .forEach((row) => {
+            const node = document.createElement("div");
+            node.className = "item";
+            node.innerHTML = `
+            <div><strong>${row.role}</strong> <span class="tag">${row.status}</span></div>
+            <div class="muted">attempt=${row.attempt} cost=${row.estimatedCost}</div>
+            <pre>${(row.stdout || row.stderr || "").slice(0, 240)}</pre>
+          `;
+            root.appendChild(node);
+          });
+      }
+
+      async function loadTimeline() {
+        if (!state.taskId) return;
+        const rows = await api(`/tasks/${state.taskId}/timeline`);
+        $("timeline").textContent = rows
+          .map((r) => `[${r.timestamp}] ${r.type} (${r.actor}) ${r.detail}`)
+          .join("\n");
+      }
+
+      $("create").onclick = async () => {
+        try {
+          const task = await api("/tasks", {
+            method: "POST",
+            body: JSON.stringify({
+              title: $("title").value,
+              goal: $("goal").value,
+              constraints: pickLines($("constraints").value),
+              acceptanceCriteria: pickLines($("criteria").value)
+            })
+          });
+          state.taskId = task.id;
+          $("createResult").textContent = `创建成功: ${task.id}`;
+          showTaskMeta(task);
+          await loadTasks();
+        } catch (err) {
+          $("createResult").textContent = err.message;
+        }
+      };
+
+      $("runRole").onclick = async () => {
+        if (!state.taskId) return alert("请先选任务");
+        const role = $("roleSelect").value;
+        await api(`/tasks/${state.taskId}/roles/${role}/run`, { method: "POST" });
+        await loadTasks();
+        await loadExecutions();
+        await loadTimeline();
+      };
+
+      $("approve").onclick = async () => {
+        if (!state.taskId) return alert("请先选任务");
+        const task = await api(`/tasks/${state.taskId}/approve`, {
+          method: "POST",
+          body: JSON.stringify({ decision: "Approve" })
+        });
+        showTaskMeta(task);
+        await loadTasks();
+        await loadTimeline();
+      };
+
+      $("reject").onclick = async () => {
+        if (!state.taskId) return alert("请先选任务");
+        const reason = prompt("驳回理由", "需要优化用户体验");
+        const task = await api(`/tasks/${state.taskId}/approve`, {
+          method: "POST",
+          body: JSON.stringify({ decision: "Reject", reason })
+        });
+        showTaskMeta(task);
+        await loadTasks();
+        await loadTimeline();
+      };
+
+      $("retry").onclick = async () => {
+        if (!state.taskId) return alert("请先选任务");
+        await api(`/tasks/${state.taskId}/retry`, {
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        await loadExecutions();
+        await loadTimeline();
+      };
+
+      $("rollback").onclick = async () => {
+        if (!state.taskId) return alert("请先选任务");
+        await api(`/tasks/${state.taskId}/rollback`, {
+          method: "POST",
+          body: JSON.stringify({ mode: "AutoToCheckpoint" })
+        });
+        await loadTasks();
+        await loadTimeline();
+      };
+
+      $("refreshTasks").onclick = loadTasks;
+      $("refreshExec").onclick = loadExecutions;
+      $("refreshTimeline").onclick = loadTimeline;
+
+      loadTasks();
+    </script>
+  </body>
+</html>
