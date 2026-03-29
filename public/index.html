@@ -137,6 +137,16 @@
         max-height: 38vh;
       }
 
+      .list.artifact-list {
+        min-height: 220px;
+        max-height: 40vh;
+      }
+
+      .list.run-list {
+        min-height: 140px;
+        max-height: 30vh;
+      }
+
       .item {
         padding: 10px;
         border: 1px solid var(--line);
@@ -181,9 +191,21 @@
         max-height: 38vh;
       }
 
+      #runLogs {
+        min-height: 180px;
+        max-height: 34vh;
+      }
+
       .muted {
         color: var(--muted);
         font-size: 13px;
+      }
+
+      .artifact-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        margin-bottom: 8px;
       }
 
       @media (max-width: 900px) {
@@ -273,12 +295,42 @@
           <h2 style="margin-top: 14px">时间线</h2>
           <button class="btn-soft" id="refreshTimeline">刷新时间线</button>
           <pre id="timeline"></pre>
+
+          <h2 style="margin-top: 14px">角色交付物</h2>
+          <div class="muted" style="margin-bottom: 8px">每个角色执行成功后的交付摘要都在这里，支持直接查看。</div>
+          <button class="btn-soft" id="refreshArtifacts">刷新交付物</button>
+          <div id="artifactList" class="list artifact-list"></div>
+          <div class="muted" id="runHint">
+            若是前后端项目，可在交付物输出里查找启动命令（如 `npm run dev`、`npm run start`）后直接运行体验。
+          </div>
+
+          <h2 style="margin-top: 14px">运行中心</h2>
+          <div class="muted" style="margin-bottom: 8px">自动识别项目类型并一键运行交付项目（本地执行）。</div>
+          <label class="field-label" for="runCwd">运行目录（可选）</label>
+          <input id="runCwd" placeholder="默认使用当前任务 worktree 目录" />
+          <button class="btn-soft" id="detectRun">识别项目与推荐命令</button>
+          <div class="muted" id="runDetectResult"></div>
+          <label class="field-label" for="runCommand">启动命令</label>
+          <input id="runCommand" placeholder="例如 npm run dev / mvn spring-boot:run" />
+          <div class="grid">
+            <button id="startRun" class="btn-alt">一键启动</button>
+            <button id="stopRun" class="btn-soft">停止选中运行</button>
+          </div>
+          <div class="grid">
+            <button id="detectRunUrl" class="btn-soft">探测可访问地址</button>
+            <button id="openRunUrl" class="btn-alt">一键打开浏览器</button>
+          </div>
+          <div class="muted" id="runUrlResult"></div>
+          <button class="btn-soft" id="refreshRuns">刷新运行列表</button>
+          <div id="runList" class="list run-list"></div>
+          <div class="muted">运行日志</div>
+          <pre id="runLogs"></pre>
         </div>
       </section>
     </div>
 
     <script>
-      const state = { taskId: null, currentTask: null, preset: null };
+      const state = { taskId: null, currentTask: null, preset: null, selectedRunId: null, detectedRunUrl: "" };
       const $ = (id) => document.getElementById(id);
       const roleLabel = {
         system: "系统",
@@ -303,7 +355,15 @@
         Retrying: "重试中",
         Failed: "失败",
         Succeeded: "成功",
-        CircuitOpen: "熔断"
+        CircuitOpen: "熔断",
+        PendingPM: "待PM审批",
+        ApprovedByPM: "PM已通过",
+        RejectedByPM: "PM已驳回"
+      };
+      const runStatusLabel = {
+        Running: "运行中",
+        Stopped: "已停止",
+        Failed: "运行失败"
       };
 
       function textRole(role) {
@@ -314,8 +374,18 @@
         return statusLabel[status] || status;
       }
 
+      function textRunStatus(status) {
+        return runStatusLabel[status] || status;
+      }
+
       function setOpResult(message, isError = false) {
         const el = $("opResult");
+        el.style.color = isError ? "#b33a16" : "#615547";
+        el.textContent = message || "";
+      }
+
+      function setRunUrlResult(message, isError = false) {
+        const el = $("runUrlResult");
         el.style.color = isError ? "#b33a16" : "#615547";
         el.textContent = message || "";
       }
@@ -386,6 +456,9 @@
             state.taskId = task.id;
             await loadTaskDetail(task.id);
             await loadTasks();
+            await loadExecutions();
+            await loadTimeline();
+            await loadArtifacts();
           };
           root.appendChild(node);
         });
@@ -399,6 +472,7 @@
           <div>目标: ${task.goal}</div>
           <div>当前角色: ${textRole(currentRole)}</div>
           <div>预算消耗: ${task.budgetConsumed}</div>
+          <div>任务仓库: ${task.repoPath || "-"}</div>
           <div>分支: ${task.branchName}</div>
           <div>worktree: ${task.worktreePath}</div>
         `;
@@ -407,7 +481,13 @@
       async function loadTaskDetail(taskId) {
         const task = await api(`/tasks/${taskId}`);
         state.currentTask = task;
+        $("runCwd").value = task.worktreePath || "";
         showTaskMeta(task);
+        try {
+          await detectRunTarget();
+        } catch (err) {
+          setRunUrlResult(err.message || "项目识别失败", true);
+        }
         return task;
       }
 
@@ -424,7 +504,7 @@
             node.className = "item";
             node.innerHTML = `
             <div><strong>${textRole(row.role)}</strong> <span class="tag">${textStatus(row.status)}</span></div>
-            <div class="muted">attempt=${row.attempt} cost=${row.estimatedCost}</div>
+            <div class="muted">attempt=${row.attempt} cost=${row.estimatedCost} · 审批=${textStatus(row.reviewStatus || "PendingPM")}</div>
             <pre>${(row.stdout || row.stderr || "").slice(0, 240)}</pre>
           `;
             root.appendChild(node);
@@ -437,6 +517,119 @@
         $("timeline").textContent = rows
           .map((r) => `[${r.timestamp}] ${r.type} (${textRole(r.actor)}) ${r.detail}`)
           .join("\n");
+      }
+
+      async function loadArtifacts() {
+        if (!state.taskId) return;
+        const data = await api(`/artifacts/${state.taskId}`);
+        const root = $("artifactList");
+        root.innerHTML = "";
+
+        if (!data.artifacts || data.artifacts.length === 0) {
+          root.innerHTML = `<div class="item muted">暂无交付物。请先运行一个角色并执行成功。</div>`;
+          return;
+        }
+
+        data.artifacts
+          .slice()
+          .reverse()
+          .forEach((artifact) => {
+            const node = document.createElement("div");
+            node.className = "item";
+            const outputText = artifact.output || "该角色暂无输出文本。";
+            node.innerHTML = `
+              <div><strong>${textRole(artifact.role)}</strong> <span class="tag">${textStatus(artifact.status || "Succeeded")}</span></div>
+              <div class="artifact-meta muted">
+                <div>尝试次数: ${artifact.attempt ?? "-"}</div>
+                <div>完成时间: ${artifact.endedAt ?? "-"}</div>
+                <div>版本: ${artifact.promptVersion ?? "-"}</div>
+                <div>审批状态: ${textStatus(artifact.reviewStatus || "PendingPM")}</div>
+                <div>checkpoint: ${artifact.checkpointCommit ?? "-"}</div>
+                <div>交付物目录: ${artifact.artifactPath ?? "-"}</div>
+              </div>
+              <div class="muted" style="margin-bottom:6px">差异摘要</div>
+              <pre style="margin-bottom:8px">${artifact.diffSummary || "无"}</pre>
+              <div class="muted" style="margin-bottom:6px">交付输出</div>
+              <pre>${outputText}</pre>
+            `;
+            root.appendChild(node);
+          });
+      }
+
+      async function detectRunTarget() {
+        const cwdInput = $("runCwd").value?.trim();
+        const params = new URLSearchParams();
+        if (cwdInput) {
+          params.set("cwd", cwdInput);
+        } else if (state.taskId) {
+          params.set("taskId", state.taskId);
+        }
+        const data = await api(`/run-center/detect?${params.toString()}`);
+        $("runDetectResult").textContent = `识别结果：${data.projectType}，推荐命令：${data.recommendedCommand}，目录：${data.cwd}`;
+        if (!$("runCommand").value?.trim() || $("runCommand").value.includes("请手动输入")) {
+          $("runCommand").value = data.recommendedCommand;
+        }
+        if (!$("runCwd").value?.trim()) {
+          $("runCwd").value = data.cwd;
+        }
+      }
+
+      async function loadRuns() {
+        const runs = await api("/run-center/runs");
+        const root = $("runList");
+        root.innerHTML = "";
+        if (!runs.length) {
+          root.innerHTML = `<div class="item muted">暂无运行实例。</div>`;
+          $("runLogs").textContent = "";
+          state.selectedRunId = null;
+          return;
+        }
+
+        runs.forEach((run) => {
+          const node = document.createElement("div");
+          node.className = `item ${run.id === state.selectedRunId ? "active" : ""}`;
+          node.innerHTML = `
+            <div><strong>${run.command}</strong><span class="tag">${textRunStatus(run.status)}</span></div>
+            <div class="muted">${run.id}</div>
+            <div class="muted">类型：${run.projectType} · PID：${run.pid ?? "-"}</div>
+            <div class="muted">目录：${run.cwd}</div>
+          `;
+          node.onclick = async () => {
+            state.selectedRunId = run.id;
+            state.detectedRunUrl = "";
+            setRunUrlResult("");
+            await loadRuns();
+            await loadRunLogs();
+          };
+          root.appendChild(node);
+        });
+
+        if (!state.selectedRunId) {
+          state.selectedRunId = runs[0].id;
+        }
+      }
+
+      async function loadRunLogs() {
+        if (!state.selectedRunId) {
+          $("runLogs").textContent = "";
+          return;
+        }
+        const data = await api(`/run-center/logs/${state.selectedRunId}`);
+        $("runLogs").textContent = data.logs || "暂无日志。";
+      }
+
+      async function detectRunUrl() {
+        if (!state.selectedRunId) {
+          setRunUrlResult("请先选择一个运行实例。", true);
+          return;
+        }
+        const data = await api(`/run-center/detect-url/${state.selectedRunId}`);
+        state.detectedRunUrl = data.url || "";
+        if (data.url) {
+          setRunUrlResult(`已探测到地址：${data.url}`);
+        } else {
+          setRunUrlResult("暂未探测到可访问地址，可稍后重试。", true);
+        }
       }
 
       $("create").onclick = async () => {
@@ -485,6 +678,7 @@
           await loadTasks();
           await loadExecutions();
           await loadTimeline();
+          await loadArtifacts();
         } catch (err) {
           setOpResult(err.message || "执行失败", true);
         }
@@ -502,6 +696,7 @@
           showTaskMeta(task);
           await loadTasks();
           await loadTimeline();
+          await loadArtifacts();
         } catch (err) {
           setOpResult(err.message || "审批失败", true);
         }
@@ -520,6 +715,7 @@
           showTaskMeta(task);
           await loadTasks();
           await loadTimeline();
+          await loadArtifacts();
         } catch (err) {
           setOpResult(err.message || "驳回失败", true);
         }
@@ -536,6 +732,7 @@
           await loadTaskDetail(state.taskId);
           await loadExecutions();
           await loadTimeline();
+          await loadArtifacts();
         } catch (err) {
           setOpResult(err.message || "重试失败", true);
         }
@@ -553,6 +750,7 @@
           await loadTasks();
           await loadTimeline();
           showTaskMeta(task);
+          await loadArtifacts();
         } catch (err) {
           setOpResult(err.message || "回滚失败", true);
         }
@@ -561,6 +759,76 @@
       $("refreshTasks").onclick = loadTasks;
       $("refreshExec").onclick = loadExecutions;
       $("refreshTimeline").onclick = loadTimeline;
+      $("refreshArtifacts").onclick = loadArtifacts;
+      $("refreshRuns").onclick = async () => {
+        await loadRuns();
+        await loadRunLogs();
+      };
+      $("detectRunUrl").onclick = async () => {
+        try {
+          await detectRunUrl();
+        } catch (err) {
+          setRunUrlResult(err.message || "地址探测失败", true);
+        }
+      };
+      $("openRunUrl").onclick = async () => {
+        try {
+          if (!state.detectedRunUrl) {
+            await detectRunUrl();
+          }
+          if (!state.detectedRunUrl) {
+            return;
+          }
+          await api("/run-center/open", {
+            method: "POST",
+            body: JSON.stringify({ url: state.detectedRunUrl })
+          });
+          setRunUrlResult(`已打开浏览器：${state.detectedRunUrl}`);
+        } catch (err) {
+          setRunUrlResult(err.message || "打开浏览器失败", true);
+        }
+      };
+      $("detectRun").onclick = async () => {
+        try {
+          await detectRunTarget();
+          setOpResult("已完成项目识别并填入推荐命令。");
+        } catch (err) {
+          setOpResult(err.message || "识别失败", true);
+        }
+      };
+      $("startRun").onclick = async () => {
+        try {
+          const body = {
+            taskId: state.taskId || undefined,
+            cwd: $("runCwd").value?.trim() || undefined,
+            command: $("runCommand").value?.trim() || undefined
+          };
+          const run = await api("/run-center/start", { method: "POST", body: JSON.stringify(body) });
+          state.selectedRunId = run.id;
+          setOpResult("已启动运行实例。");
+          await loadRuns();
+          await loadRunLogs();
+        } catch (err) {
+          setOpResult(err.message || "启动失败", true);
+        }
+      };
+      $("stopRun").onclick = async () => {
+        if (!state.selectedRunId) {
+          setOpResult("请先从运行列表选择一个实例。", true);
+          return;
+        }
+        try {
+          await api("/run-center/stop", {
+            method: "POST",
+            body: JSON.stringify({ runId: state.selectedRunId })
+          });
+          setOpResult("已停止运行实例。");
+          await loadRuns();
+          await loadRunLogs();
+        } catch (err) {
+          setOpResult(err.message || "停止失败", true);
+        }
+      };
       $("resetPreset").onclick = () => {
         applyPresetToForm(state.preset);
         setOpResult("已恢复系统预设。");
@@ -572,6 +840,10 @@
           setOpResult(err.message || "加载预设失败", true);
           loadTasks();
         });
+
+      loadRuns().catch(() => {
+        $("runList").innerHTML = `<div class="item muted">运行中心初始化失败。</div>`;
+      });
 
       bindAutoResize("goal");
       bindAutoResize("constraints");

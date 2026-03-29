@@ -13,16 +13,20 @@ import type {
   Task,
   TaskInput
 } from "../domain/types.js";
+import { ArtifactStore } from "../infrastructure/artifacts/artifact-store.js";
 import { CodexExecutor } from "../infrastructure/execution/codex-executor.js";
 import { GitService } from "../infrastructure/git/git-service.js";
-import { InMemoryStore } from "../infrastructure/store/in-memory-store.js";
+import { SQLiteStore } from "../infrastructure/store/sqlite-store.js";
 import { id, nowIso } from "../shared/utils.js";
 
 export class Orchestrator {
+  private readonly gitByRepoPath = new Map<string, GitService>();
+
   constructor(
-    private readonly store: InMemoryStore,
-    private readonly git: GitService,
-    private readonly executor: CodexExecutor
+    private readonly store: SQLiteStore,
+    private readonly defaultTaskRepoPath: string,
+    private readonly executor: CodexExecutor,
+    private readonly artifacts: ArtifactStore
   ) {}
 
   listTasks(): Task[] {
@@ -60,11 +64,13 @@ export class Orchestrator {
 
   async createTask(input: TaskInput): Promise<Task> {
     const taskId = id("task");
-    const workspace = await this.git.createTaskWorkspace(taskId);
+    const targetRepoPath = path.resolve(input.repoPath?.trim() || this.defaultTaskRepoPath);
+    const workspace = await this.getGit(targetRepoPath).createTaskWorkspace(taskId);
     const now = nowIso();
 
     const task: Task = {
       id: taskId,
+      repoPath: targetRepoPath,
       title: input.title,
       goal: input.goal,
       status: "InProgress",
@@ -150,6 +156,7 @@ export class Orchestrator {
         role,
         promptVersion: contract.promptVersion,
         status: "Running",
+        reviewStatus: undefined,
         command: "",
         startedAt,
         stdout: "",
@@ -173,12 +180,13 @@ export class Orchestrator {
       const result = await this.executor.execute(task.worktreePath, request);
       const checkpoint =
         result.status === "Succeeded"
-          ? await this.git.commitCheckpoint(task.worktreePath, `task(${task.id}): ${role} checkpoint`) 
+          ? await this.getGit(this.repoPathOf(task)).commitCheckpoint(task.worktreePath, `task(${task.id}): ${role} checkpoint`)
           : undefined;
-      const diffSummary = await this.git.getDiffSummary(task.worktreePath);
+      const diffSummary = await this.getGit(this.repoPathOf(task)).getDiffSummary(task.worktreePath);
 
       lastExecution = this.store.updateExecution(taskId, executionId, {
         status: result.status,
+        reviewStatus: result.status === "Succeeded" ? "PendingPM" : undefined,
         command: result.command,
         endedAt: nowIso(),
         exitCode: result.exitCode,
@@ -190,6 +198,9 @@ export class Orchestrator {
         retriable: result.retriable,
         checkpointCommit: checkpoint
       });
+
+      const artifactPath = await this.artifacts.saveExecutionArtifact({ task, execution: lastExecution });
+      lastExecution = this.store.updateExecution(taskId, executionId, { artifactPath });
 
       task.budgetConsumed = Number((task.budgetConsumed + result.estimatedCost).toFixed(4));
       task.updatedAt = nowIso();
@@ -222,7 +233,7 @@ export class Orchestrator {
         continue;
       }
 
-      await this.git.rollbackTo(task.worktreePath, task.startCommit);
+      await this.getGit(this.repoPathOf(task)).rollbackTo(task.worktreePath, task.startCommit);
       task.status = "Blocked";
       task.events.push({
         id: id("evt"),
@@ -262,12 +273,15 @@ export class Orchestrator {
       if (latest?.checkpointCommit) {
         task.lastApprovedCommit = latest.checkpointCommit;
       }
+      if (latest && latest.role === activeRole) {
+        this.store.updateExecution(taskId, latest.id, { reviewStatus: "ApprovedByPM" });
+      }
 
       if (task.currentRoleIndex < task.roles.length - 2) {
         task.currentRoleIndex += 1;
         task.status = "InProgress";
       } else {
-        await this.git.publishTaskBranch(task.branchName, task.baseBranch);
+        await this.getGit(this.repoPathOf(task)).publishTaskBranch(task.branchName, task.baseBranch);
         task.currentRoleIndex = task.roles.length - 1;
         task.status = "Done";
         task.events.push({
@@ -285,9 +299,13 @@ export class Orchestrator {
       return this.store.saveTask(task);
     }
 
-    await this.git.rollbackTo(task.worktreePath, task.lastApprovedCommit);
+    await this.getGit(this.repoPathOf(task)).rollbackTo(task.worktreePath, task.lastApprovedCommit);
     task.rejectedCount += 1;
     task.status = "Rejected";
+    const latest = this.store.getLastExecution(taskId);
+    if (latest && latest.role === activeRole) {
+      this.store.updateExecution(taskId, latest.id, { reviewStatus: "RejectedByPM" });
+    }
     logDecision(input.decision, input.reason);
     task.events.push({
       id: id("evt"),
@@ -323,7 +341,7 @@ export class Orchestrator {
       throw new Error("手动回滚模式必须提供 targetCommit。");
     }
 
-    await this.git.rollbackTo(task.worktreePath, target);
+    await this.getGit(this.repoPathOf(task)).rollbackTo(task.worktreePath, target);
     task.status = "Blocked";
     task.updatedAt = nowIso();
     task.events.push({
@@ -348,5 +366,20 @@ export class Orchestrator {
     }
     const normalized = value.map((item) => item.trim()).filter(Boolean);
     return normalized.length > 0 ? normalized : [...preset];
+  }
+
+  private getGit(repoPath: string): GitService {
+    const abs = path.resolve(repoPath);
+    const existing = this.gitByRepoPath.get(abs);
+    if (existing) {
+      return existing;
+    }
+    const created = new GitService(abs);
+    this.gitByRepoPath.set(abs, created);
+    return created;
+  }
+
+  private repoPathOf(task: Task): string {
+    return task.repoPath || this.defaultTaskRepoPath;
   }
 }

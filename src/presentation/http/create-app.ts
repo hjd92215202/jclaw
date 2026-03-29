@@ -6,15 +6,17 @@ import { Orchestrator } from "../../application/orchestrator.js";
 import { parseRoleInput } from "../../domain/roles.js";
 import { DEFAULT_TASK_PRESET } from "../../domain/task-presets.js";
 import type { Role } from "../../domain/types.js";
+import { ArtifactStore } from "../../infrastructure/artifacts/artifact-store.js";
 import { CodexExecutor } from "../../infrastructure/execution/codex-executor.js";
-import { GitService } from "../../infrastructure/git/git-service.js";
-import { InMemoryStore } from "../../infrastructure/store/in-memory-store.js";
+import { RunCenter } from "../../infrastructure/runtime/run-center.js";
+import { SQLiteStore } from "../../infrastructure/store/sqlite-store.js";
 
 const taskInputSchema = z.object({
   title: z.string().min(1),
   goal: z.string().min(1),
   constraints: z.array(z.string()).optional(),
   acceptanceCriteria: z.array(z.string()).optional(),
+  repoPath: z.string().optional(),
   budgetPolicy: z
     .object({
       hardLimit: z.number().positive().optional(),
@@ -50,11 +52,32 @@ const messageSchema = z.object({
   content: z.string().min(1)
 });
 
+const detectSchema = z.object({
+  taskId: z.string().optional(),
+  cwd: z.string().optional()
+});
+
+const startRunSchema = z.object({
+  taskId: z.string().optional(),
+  cwd: z.string().optional(),
+  command: z.string().optional()
+});
+
+const stopRunSchema = z.object({
+  runId: z.string().min(1)
+});
+
+const openUrlSchema = z.object({
+  url: z.string().min(1)
+});
+
 export function createApp(repoPath: string): express.Express {
-  const store = new InMemoryStore();
-  const git = new GitService(repoPath);
+  const store = new SQLiteStore(path.join(repoPath, ".ai-workbench", "workbench.db"));
   const executor = new CodexExecutor();
-  const orchestrator = new Orchestrator(store, git, executor);
+  const artifacts = new ArtifactStore(repoPath);
+  const runCenter = new RunCenter();
+  const defaultTaskRepoPath = path.join(repoPath, ".ai-workbench", "runtime-repos", "default");
+  const orchestrator = new Orchestrator(store, defaultTaskRepoPath, executor, artifacts);
 
   const app = express();
   app.use(cors());
@@ -175,10 +198,15 @@ export function createApp(repoPath: string): express.Express {
         .filter((item) => item.status === "Succeeded")
         .map((item) => ({
           role: item.role,
+          status: item.status,
+          reviewStatus: item.reviewStatus,
+          attempt: item.attempt,
+          endedAt: item.endedAt,
           promptVersion: item.promptVersion,
           checkpointCommit: item.checkpointCommit,
+          artifactPath: item.artifactPath,
           diffSummary: item.diffSummary,
-          outputPreview: item.stdout.slice(0, 200)
+          output: item.stdout || item.stderr || ""
         }));
 
       res.json({ taskId: task.id, artifacts });
@@ -194,6 +222,83 @@ export function createApp(repoPath: string): express.Express {
       executable: "codex",
       note: "This deployment uses Codex CLI as the primary execution engine."
     });
+  });
+
+  app.get("/run-center/detect", async (req, res, next) => {
+    try {
+      const query = detectSchema.parse(req.query);
+      let cwd = defaultTaskRepoPath;
+      if (query.taskId) {
+        const task = orchestrator.getTask(query.taskId);
+        cwd = task.worktreePath;
+      } else if (query.cwd) {
+        cwd = path.resolve(query.cwd);
+      }
+
+      const detected = await runCenter.detect(cwd);
+      res.json({ cwd, ...detected });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/run-center/runs", (_req, res) => {
+    res.json(runCenter.listRuns());
+  });
+
+  app.get("/run-center/logs/:runId", (req, res, next) => {
+    try {
+      res.json(runCenter.getLogs(req.params.runId));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/run-center/detect-url/:runId", async (req, res, next) => {
+    try {
+      const result = await runCenter.detectUrl(req.params.runId);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/run-center/start", async (req, res, next) => {
+    try {
+      const input = startRunSchema.parse(req.body ?? {});
+      let cwd = defaultTaskRepoPath;
+      if (input.taskId) {
+        const task = orchestrator.getTask(input.taskId);
+        cwd = task.worktreePath;
+      } else if (input.cwd) {
+        cwd = path.resolve(input.cwd);
+      }
+
+      const run = await runCenter.start(cwd, input.command);
+      res.status(201).json(run);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/run-center/stop", async (req, res, next) => {
+    try {
+      const input = stopRunSchema.parse(req.body);
+      const run = await runCenter.stop(input.runId);
+      res.json(run);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/run-center/open", async (req, res, next) => {
+    try {
+      const input = openUrlSchema.parse(req.body);
+      await runCenter.openUrl(input.url);
+      res.json({ ok: true, url: input.url });
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.use(express.static(path.join(repoPath, "public")));

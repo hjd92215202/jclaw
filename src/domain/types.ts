@@ -49,6 +49,7 @@ export interface TaskInput {
 
 export interface Task {
   id: string;
+  repoPath: string;
   title: string;
   goal: string;
   status: TaskStatus;
@@ -87,6 +88,7 @@ export interface ExecutionRecord {
   role: Role;
   promptVersion: string;
   status: ExecutionStatus;
+  reviewStatus?: "PendingPM" | "ApprovedByPM" | "RejectedByPM";
   command: string;
   startedAt: string;
   endedAt?: string;
@@ -99,6 +101,7 @@ export interface ExecutionRecord {
   attempt: number;
   retriable: boolean;
   checkpointCommit?: string;
+  artifactPath?: string;
 }
 
 export interface TaskEvent {

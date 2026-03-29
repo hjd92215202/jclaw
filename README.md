@@ -42,6 +42,19 @@ npm run dev
 - `GET /artifacts/:taskId`：查看成功阶段产物摘要
 - `POST /models/route-test`：执行引擎健康检查（Codex）
 - `GET /presets/defaults`：获取系统预设（约束、验收标准、预算策略）
+- `GET /run-center/detect`：识别项目类型与推荐启动命令
+- `POST /run-center/start`：启动本地运行实例
+- `POST /run-center/stop`：停止运行实例
+- `GET /run-center/runs`：查看运行实例列表
+- `GET /run-center/logs/:runId`：查看运行日志
+- `GET /run-center/detect-url/:runId`：探测可访问地址
+- `POST /run-center/open`：一键打开浏览器
+
+## 审批状态说明
+
+- `执行状态` 表示角色任务是否跑成功（如 `Succeeded`）。
+- `审批状态` 表示 PM 是否通过该交付物（`PendingPM` / `ApprovedByPM` / `RejectedByPM`）。
+- 当 PM 驳回时，执行状态仍可能是成功，但审批状态会标记为已驳回并触发回滚。
 
 ## 测试
 
@@ -54,6 +67,10 @@ npm test
 - 当前版本为单用户、本地优先。
 - 执行引擎为 Codex CLI，不走多厂商模型 API 直连路由。
 - 任务分支命名规则：`task/<taskId>`，对应工作目录：`.worktrees/<taskId>`。
+- 历史数据默认落盘在：`.ai-workbench/workbench.db`（SQLite）。
+- 角色交付物默认落盘在：`.ai-workbench/artifacts/<taskId>/`。
+- 任务默认在系统托管运行仓执行：`.ai-workbench/runtime-repos/default`，不会污染本系统源码仓。
+- 如需对特定项目执行任务，可在创建任务时传入 `repoPath` 覆盖默认运行仓。
 
 ## 文档规范
 

@@ -13,6 +13,7 @@ export class GitService {
   constructor(private readonly repoPath: string) {}
 
   async ensureRepoReady(): Promise<void> {
+    await mkdir(this.repoPath, { recursive: true });
     const probe = await runCommand("git", ["rev-parse", "--is-inside-work-tree"], { cwd: this.repoPath });
     if (probe.exitCode !== 0) {
       await this.mustGit(["init"]);
