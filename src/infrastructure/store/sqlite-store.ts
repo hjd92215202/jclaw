@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
-import type { ChatMessage, ExecutionRecord, Task } from "../../domain/types.js";
+import type { ChatMessage, ExecutionRecord, ManagedProject, Task } from "../../domain/types.js";
 
 type JsonRow = { data: string };
 
@@ -16,6 +16,37 @@ export class SQLiteStore {
     this.init();
   }
 
+  createProject(project: ManagedProject): ManagedProject {
+    this.db
+      .prepare("INSERT INTO projects (id, created_at, updated_at, data) VALUES (?, ?, ?, ?)")
+      .run(project.id, project.createdAt, project.updatedAt, JSON.stringify(project));
+    return project;
+  }
+
+  listProjects(): ManagedProject[] {
+    const rows = this.db.prepare("SELECT data FROM projects ORDER BY created_at ASC").all() as JsonRow[];
+    return rows.map((row) => JSON.parse(row.data) as ManagedProject);
+  }
+
+  getProject(projectId: string): ManagedProject | undefined {
+    const row = this.db.prepare("SELECT data FROM projects WHERE id = ?").get(projectId) as JsonRow | undefined;
+    return row ? (JSON.parse(row.data) as ManagedProject) : undefined;
+  }
+
+  getProjectByRepoPath(repoPath: string): ManagedProject | undefined {
+    const rows = this.db.prepare("SELECT data FROM projects").all() as JsonRow[];
+    return rows
+      .map((row) => JSON.parse(row.data) as ManagedProject)
+      .find((project) => path.resolve(project.repoPath) === path.resolve(repoPath));
+  }
+
+  saveProject(project: ManagedProject): ManagedProject {
+    this.db
+      .prepare("UPDATE projects SET data = ?, updated_at = ? WHERE id = ?")
+      .run(JSON.stringify(project), project.updatedAt, project.id);
+    return project;
+  }
+
   createTask(task: Task): Task {
     this.db
       .prepare("INSERT INTO tasks (id, created_at, data) VALUES (?, ?, ?)")
@@ -25,12 +56,12 @@ export class SQLiteStore {
 
   listTasks(): Task[] {
     const rows = this.db.prepare("SELECT data FROM tasks ORDER BY created_at ASC").all() as JsonRow[];
-    return rows.map((row) => JSON.parse(row.data) as Task);
+    return rows.map((row) => this.normalizeTask(JSON.parse(row.data) as Task));
   }
 
   getTask(taskId: string): Task | undefined {
     const row = this.db.prepare("SELECT data FROM tasks WHERE id = ?").get(taskId) as JsonRow | undefined;
-    return row ? (JSON.parse(row.data) as Task) : undefined;
+    return row ? this.normalizeTask(JSON.parse(row.data) as Task) : undefined;
   }
 
   saveTask(task: Task): Task {
@@ -92,6 +123,13 @@ export class SQLiteStore {
 
   private init(): void {
     this.db.exec(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        data TEXT NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
         created_at TEXT NOT NULL,
@@ -120,6 +158,28 @@ export class SQLiteStore {
       CREATE INDEX IF NOT EXISTS idx_messages_task_timestamp
       ON messages(task_id, timestamp);
     `);
+  }
+
+  private normalizeTask(task: Task | (Task & Record<string, unknown>)): Task {
+    const legacyTask = task as Task & Record<string, unknown>;
+    if (
+      legacyTask.projectId &&
+      legacyTask.projectName &&
+      legacyTask.projectRepoPath &&
+      legacyTask.projectBranchName &&
+      legacyTask.projectBaseBranch
+    ) {
+      return legacyTask as Task;
+    }
+
+    return {
+      ...(legacyTask as Task),
+      projectId: String(legacyTask.projectId ?? legacyTask.id),
+      projectName: String(legacyTask.projectName ?? legacyTask.title ?? "默认托管项目"),
+      projectRepoPath: String(legacyTask.projectRepoPath ?? legacyTask.repoPath ?? ""),
+      projectBranchName: String(legacyTask.projectBranchName ?? legacyTask.branchName ?? ""),
+      projectBaseBranch: String(legacyTask.projectBaseBranch ?? legacyTask.baseBranch ?? "master")
+    };
   }
 }
 

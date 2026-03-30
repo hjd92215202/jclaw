@@ -3,5 +3,5 @@ dist
 .worktrees
 .DS_Store
 coverage
+.claude 
 .ai-workbench
-.claude

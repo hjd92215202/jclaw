@@ -46,8 +46,6 @@ export class CodexExecutor {
         "--skip-git-repo-check",
         "--sandbox",
         "workspace-write",
-        "--ask-for-approval",
-        "never",
         "-C",
         worktreePath,
         "--json",
@@ -74,11 +72,22 @@ export class CodexExecutor {
   private async ensureCodexAvailable(): Promise<void> {
     try {
       await access("/usr/local/bin/codex", constants.X_OK);
+      return;
     } catch {
-      const probe = await runCommand("which", ["codex"], { cwd: process.cwd() });
-      if (probe.exitCode !== 0) {
-        throw new Error("codex CLI not found. Please install codex-cli first.");
-      }
+      // continue to PATH-based lookup for non-Unix environments
+    }
+
+    const lookupCommand = process.platform === "win32" ? "where" : "which";
+    let probe;
+
+    try {
+      probe = await runCommand(lookupCommand, ["codex"], { cwd: process.cwd() });
+    } catch {
+      throw new Error("codex CLI not found. Please install codex-cli first.");
+    }
+
+    if (probe.exitCode !== 0) {
+      throw new Error("codex CLI not found. Please install codex-cli first.");
     }
   }
 

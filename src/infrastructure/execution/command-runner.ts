@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { access } from "node:fs/promises";
+import path from "node:path";
 
 export interface CommandResult {
   command: string;
@@ -15,11 +17,20 @@ export async function runCommand(
   opts: { cwd: string; env?: NodeJS.ProcessEnv; timeoutMs?: number }
 ): Promise<CommandResult> {
   const started = Date.now();
-  const child = spawn(command, args, {
-    cwd: opts.cwd,
-    env: { ...process.env, ...opts.env },
-    stdio: ["ignore", "pipe", "pipe"]
-  });
+  const env = { ...process.env, ...opts.env };
+  const resolvedCommand = await resolveCommand(command, env);
+  const isWindowsScript = process.platform === "win32" && /\.(cmd|bat)$/i.test(resolvedCommand);
+  const child = isWindowsScript
+    ? spawn("cmd.exe", ["/d", "/s", "/c", resolvedCommand, ...args], {
+        cwd: opts.cwd,
+        env,
+        stdio: ["ignore", "pipe", "pipe"]
+      })
+    : spawn(resolvedCommand, args, {
+        cwd: opts.cwd,
+        env,
+        stdio: ["ignore", "pipe", "pipe"]
+      });
 
   let stdout = "";
   let stderr = "";
@@ -58,4 +69,37 @@ export async function runCommand(
     durationMs: Date.now() - started,
     timedOut
   };
+}
+
+async function resolveCommand(command: string, env: NodeJS.ProcessEnv): Promise<string> {
+  if (process.platform !== "win32") {
+    return command;
+  }
+
+  if (path.isAbsolute(command) || command.includes("/") || command.includes("\\")) {
+    return command;
+  }
+
+  const pathValue = env.PATH || env.Path || "";
+  const pathEntries = pathValue.split(path.delimiter).filter(Boolean);
+  const pathext = (env.PATHEXT || ".COM;.EXE;.BAT;.CMD")
+    .split(";")
+    .map((ext) => ext.toLowerCase())
+    .filter(Boolean);
+  const commandExt = path.extname(command).toLowerCase();
+  const candidates = commandExt ? [command] : pathext.map((ext) => `${command}${ext}`);
+
+  for (const dir of pathEntries) {
+    for (const candidate of candidates) {
+      const fullPath = path.join(dir, candidate);
+      try {
+        await access(fullPath);
+        return fullPath;
+      } catch {
+        // try next candidate
+      }
+    }
+  }
+
+  return command;
 }

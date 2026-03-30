@@ -7,6 +7,7 @@ import type {
   ExecutionRecord,
   ExecutionRequest,
   GateDecision,
+  ManagedProject,
   RetryInput,
   RollbackInput,
   Role,
@@ -24,7 +25,7 @@ export class Orchestrator {
 
   constructor(
     private readonly store: SQLiteStore,
-    private readonly defaultTaskRepoPath: string,
+    private readonly managedProjectsRootPath: string,
     private readonly executor: CodexExecutor,
     private readonly artifacts: ArtifactStore
   ) {}
@@ -64,20 +65,22 @@ export class Orchestrator {
 
   async createTask(input: TaskInput): Promise<Task> {
     const taskId = id("task");
-    const targetRepoPath = path.resolve(input.repoPath?.trim() || this.defaultTaskRepoPath);
-    const workspace = await this.getGit(targetRepoPath).createTaskWorkspace(taskId);
+    const project = this.resolveManagedProject(input);
+    const workspace = await this.getGit(project.repoPath).createTaskWorkspace(taskId);
     const now = nowIso();
 
     const task: Task = {
       id: taskId,
-      repoPath: targetRepoPath,
+      projectId: project.id,
+      projectName: project.name,
+      projectRepoPath: project.repoPath,
       title: input.title,
       goal: input.goal,
       status: "InProgress",
       currentRoleIndex: 0,
       roles: ROLE_CHAIN,
-      branchName: workspace.branchName,
-      baseBranch: workspace.baseBranch,
+      projectBranchName: workspace.branchName,
+      projectBaseBranch: workspace.baseBranch,
       worktreePath: workspace.worktreePath,
       startCommit: workspace.startCommit,
       lastApprovedCommit: workspace.startCommit,
@@ -97,7 +100,7 @@ export class Orchestrator {
       type: "TaskCreated",
       actor: "system",
       timestamp: now,
-      detail: `Task created with worktree ${path.relative(process.cwd(), workspace.worktreePath)}`
+      detail: `Task created in managed project ${project.name} with workspace ${path.relative(process.cwd(), workspace.worktreePath)}`
     });
 
     return this.store.createTask(task);
@@ -174,15 +177,15 @@ export class Orchestrator {
         type: "ExecutionStarted",
         actor: role,
         timestamp: startedAt,
-        detail: `Role ${role} execution started (attempt ${attempt}).`
+        detail: `Role ${role} execution started in managed project ${task.projectName} (attempt ${attempt}).`
       });
 
       const result = await this.executor.execute(task.worktreePath, request);
       const checkpoint =
         result.status === "Succeeded"
-          ? await this.getGit(this.repoPathOf(task)).commitCheckpoint(task.worktreePath, `task(${task.id}): ${role} checkpoint`)
+          ? await this.getGit(task.projectRepoPath).commitCheckpoint(task.worktreePath, `task(${task.id}): ${role} checkpoint`)
           : undefined;
-      const diffSummary = await this.getGit(this.repoPathOf(task)).getDiffSummary(task.worktreePath);
+      const diffSummary = await this.getGit(task.projectRepoPath).getDiffSummary(task.worktreePath);
 
       lastExecution = this.store.updateExecution(taskId, executionId, {
         status: result.status,
@@ -233,7 +236,7 @@ export class Orchestrator {
         continue;
       }
 
-      await this.getGit(this.repoPathOf(task)).rollbackTo(task.worktreePath, task.startCommit);
+      await this.getGit(task.projectRepoPath).rollbackTo(task.worktreePath, task.startCommit);
       task.status = "Blocked";
       task.events.push({
         id: id("evt"),
@@ -241,7 +244,7 @@ export class Orchestrator {
         type: "Rollback",
         actor: "system",
         timestamp: nowIso(),
-        detail: `Auto rollback to ${task.startCommit} after failure.`
+        detail: `Auto rollback to ${task.startCommit} in managed project ${task.projectName} after failure.`
       });
       this.store.saveTask(task);
       return lastExecution;
@@ -281,7 +284,7 @@ export class Orchestrator {
         task.currentRoleIndex += 1;
         task.status = "InProgress";
       } else {
-        await this.getGit(this.repoPathOf(task)).publishTaskBranch(task.branchName, task.baseBranch);
+        await this.getGit(task.projectRepoPath).publishTaskBranch(task.projectBranchName, task.projectBaseBranch);
         task.currentRoleIndex = task.roles.length - 1;
         task.status = "Done";
         task.events.push({
@@ -290,7 +293,7 @@ export class Orchestrator {
           type: "Publish",
           actor: "system",
           timestamp: nowIso(),
-          detail: `Merged ${task.branchName} into ${task.baseBranch}`
+          detail: `Merged ${task.projectBranchName} into managed project base branch ${task.projectBaseBranch}`
         });
       }
 
@@ -299,7 +302,7 @@ export class Orchestrator {
       return this.store.saveTask(task);
     }
 
-    await this.getGit(this.repoPathOf(task)).rollbackTo(task.worktreePath, task.lastApprovedCommit);
+    await this.getGit(task.projectRepoPath).rollbackTo(task.worktreePath, task.lastApprovedCommit);
     task.rejectedCount += 1;
     task.status = "Rejected";
     const latest = this.store.getLastExecution(taskId);
@@ -341,7 +344,7 @@ export class Orchestrator {
       throw new Error("手动回滚模式必须提供 targetCommit。");
     }
 
-    await this.getGit(this.repoPathOf(task)).rollbackTo(task.worktreePath, target);
+    await this.getGit(task.projectRepoPath).rollbackTo(task.worktreePath, target);
     task.status = "Blocked";
     task.updatedAt = nowIso();
     task.events.push({
@@ -368,6 +371,48 @@ export class Orchestrator {
     return normalized.length > 0 ? normalized : [...preset];
   }
 
+  private resolveManagedProject(input: TaskInput): ManagedProject {
+    if (input.projectId) {
+      const existing = this.store.getProject(input.projectId);
+      if (!existing) {
+        throw new Error(`托管项目不存在：${input.projectId}`);
+      }
+      return existing;
+    }
+
+    const requestedName = input.project?.name?.trim();
+    if (requestedName) {
+      const existing = this.store
+        .listProjects()
+        .find((project) => project.name.toLowerCase() === requestedName.toLowerCase());
+      if (existing) {
+        return existing;
+      }
+      return this.createManagedProject(requestedName);
+    }
+
+    const existingDefault = this.store.getProject("default");
+    if (existingDefault) {
+      return existingDefault;
+    }
+    return this.createManagedProject("默认托管项目", "default");
+  }
+
+  private createManagedProject(name: string, preferredId?: string): ManagedProject {
+    const projectId = preferredId ?? id("project");
+    const now = nowIso();
+    const project: ManagedProject = {
+      id: projectId,
+      name,
+      source: "internal-managed",
+      repoPath: path.join(this.managedProjectsRootPath, projectId, "repo"),
+      defaultBranch: "master",
+      createdAt: now,
+      updatedAt: now
+    };
+    return this.store.createProject(project);
+  }
+
   private getGit(repoPath: string): GitService {
     const abs = path.resolve(repoPath);
     const existing = this.gitByRepoPath.get(abs);
@@ -377,9 +422,5 @@ export class Orchestrator {
     const created = new GitService(abs);
     this.gitByRepoPath.set(abs, created);
     return created;
-  }
-
-  private repoPathOf(task: Task): string {
-    return task.repoPath || this.defaultTaskRepoPath;
   }
 }

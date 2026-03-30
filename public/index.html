@@ -1071,6 +1071,16 @@
         return runStatusLabel[status] || status;
       }
 
+      function textTaskBranch(task) {
+        if (!task?.projectBranchName) {
+          return "当前任务工作分支";
+        }
+        if (task.projectBranchName.startsWith("task/")) {
+          return "当前任务工作分支";
+        }
+        return "独立任务工作区";
+      }
+
       function setOpResult(message, isError = false) {
         const el = $("opResult");
         el.style.color = isError ? "#b33a16" : "#615547";
@@ -1103,10 +1113,10 @@
         metaEl.innerHTML = `
           <span>当前角色：${textRole(currentRole)}</span>
           <span>预算消耗：${task.budgetConsumed}</span>
-          <span>分支：${task.branchName || "-"}</span>
+          <span>任务分支：${textTaskBranch(task)}</span>
         `;
         hintEl.innerHTML = `
-          <span class="current-task-hint-label">Worktree</span>
+          <span class="current-task-hint-label">任务工作区</span>
           <span class="current-task-path">${task.worktreePath || "当前任务暂无 worktree 信息。"}</span>
         `;
       }
@@ -1291,7 +1301,7 @@
               </div>
               <span class="tag">${textStatus(task.status)}</span>
             </div>
-            <div class="muted task-item-meta">当前角色：${textRole(currentRole)}${task.branchName ? ` · ${task.branchName}` : ""}</div>
+            <div class="muted task-item-meta">当前角色：${textRole(currentRole)}${task.projectBranchName ? ` · ${textTaskBranch(task)}` : ""}</div>
           `;
           node.onclick = async () => {
             await selectTask(task.id, "workbench");
@@ -1313,12 +1323,16 @@
           <div class="muted meta-goal">${task.goal}</div>
           <div class="meta-grid muted">
             <div class="meta-row">
-              <span class="meta-k">任务仓库</span>
-              <div class="meta-v">${task.repoPath || "-"}</div>
+              <span class="meta-k">托管项目</span>
+              <div class="meta-v">${task.projectName || "-"}</div>
             </div>
             <div class="meta-row">
-              <span class="meta-k">分支</span>
-              <div class="meta-v">${task.branchName || "-"}</div>
+              <span class="meta-k">项目仓库</span>
+              <div class="meta-v">${task.projectRepoPath || "-"}</div>
+            </div>
+            <div class="meta-row">
+              <span class="meta-k">任务分支</span>
+              <div class="meta-v">${textTaskBranch(task)}</div>
             </div>
             <div class="meta-row">
               <span class="meta-k">当前角色</span>
@@ -1329,7 +1343,7 @@
               <div class="meta-v">${task.budgetConsumed}</div>
             </div>
             <div class="meta-row meta-row-wide">
-              <span class="meta-k">Worktree</span>
+              <span class="meta-k">任务工作区</span>
               <div class="meta-v">${task.worktreePath || "-"}</div>
             </div>
           </div>

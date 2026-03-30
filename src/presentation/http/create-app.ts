@@ -16,7 +16,13 @@ const taskInputSchema = z.object({
   goal: z.string().min(1),
   constraints: z.array(z.string()).optional(),
   acceptanceCriteria: z.array(z.string()).optional(),
-  repoPath: z.string().optional(),
+  projectId: z.string().optional(),
+  project: z
+    .object({
+      id: z.string().optional(),
+      name: z.string().min(1).optional()
+    })
+    .optional(),
   budgetPolicy: z
     .object({
       hardLimit: z.number().positive().optional(),
@@ -71,13 +77,15 @@ const openUrlSchema = z.object({
   url: z.string().min(1)
 });
 
-export function createApp(repoPath: string): express.Express {
-  const store = new SQLiteStore(path.join(repoPath, ".ai-workbench", "workbench.db"));
+export function createApp(workbenchRootPath: string): express.Express {
+  const stateRootPath = path.join(workbenchRootPath, ".ai-workbench");
+  const managedProjectsRootPath = path.join(stateRootPath, "projects");
+  const store = new SQLiteStore(path.join(stateRootPath, "workbench.db"));
   const executor = new CodexExecutor();
-  const artifacts = new ArtifactStore(repoPath);
+  const artifacts = new ArtifactStore(workbenchRootPath);
   const runCenter = new RunCenter();
-  const defaultTaskRepoPath = path.join(repoPath, ".ai-workbench", "runtime-repos", "default");
-  const orchestrator = new Orchestrator(store, defaultTaskRepoPath, executor, artifacts);
+  const defaultManagedProjectRepoPath = path.join(managedProjectsRootPath, "default", "repo");
+  const orchestrator = new Orchestrator(store, managedProjectsRootPath, executor, artifacts);
 
   const app = express();
   app.use(cors());
@@ -227,7 +235,7 @@ export function createApp(repoPath: string): express.Express {
   app.get("/run-center/detect", async (req, res, next) => {
     try {
       const query = detectSchema.parse(req.query);
-      let cwd = defaultTaskRepoPath;
+      let cwd = defaultManagedProjectRepoPath;
       if (query.taskId) {
         const task = orchestrator.getTask(query.taskId);
         cwd = task.worktreePath;
@@ -266,7 +274,7 @@ export function createApp(repoPath: string): express.Express {
   app.post("/run-center/start", async (req, res, next) => {
     try {
       const input = startRunSchema.parse(req.body ?? {});
-      let cwd = defaultTaskRepoPath;
+      let cwd = defaultManagedProjectRepoPath;
       if (input.taskId) {
         const task = orchestrator.getTask(input.taskId);
         cwd = task.worktreePath;
@@ -301,10 +309,10 @@ export function createApp(repoPath: string): express.Express {
     }
   });
 
-  app.use(express.static(path.join(repoPath, "public")));
+  app.use(express.static(path.join(workbenchRootPath, "public")));
 
   app.get(/.*/, (_req, res) => {
-    res.sendFile(path.join(repoPath, "public", "index.html"));
+    res.sendFile(path.join(workbenchRootPath, "public", "index.html"));
   });
 
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

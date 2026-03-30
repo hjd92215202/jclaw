@@ -38,25 +38,43 @@ export interface BudgetPolicy {
   circuitBreakerAt: number;
 }
 
+export interface ManagedProjectInput {
+  id?: string;
+  name?: string;
+}
+
 export interface TaskInput {
   title: string;
   goal: string;
   constraints?: string[];
   acceptanceCriteria?: string[];
   budgetPolicy?: Partial<BudgetPolicy>;
-  repoPath?: string;
+  projectId?: string;
+  project?: ManagedProjectInput;
+}
+
+export interface ManagedProject {
+  id: string;
+  name: string;
+  source: "internal-managed";
+  repoPath: string;
+  defaultBranch: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Task {
   id: string;
-  repoPath: string;
+  projectId: string;
+  projectName: string;
+  projectRepoPath: string;
   title: string;
   goal: string;
   status: TaskStatus;
   currentRoleIndex: number;
   roles: Role[];
-  branchName: string;
-  baseBranch: string;
+  projectBranchName: string;
+  projectBaseBranch: string;
   worktreePath: string;
   startCommit: string;
   lastApprovedCommit: string;
