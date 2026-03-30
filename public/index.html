@@ -26,17 +26,404 @@
         background: radial-gradient(circle at top right, #f7d9b6 0%, var(--bg) 45%),
           linear-gradient(130deg, #efe2d2, #f4efe6);
         min-height: 100vh;
-        overflow: hidden;
       }
 
       .shell {
-        width: 100vw;
-        height: 100vh;
-        margin: 0;
+        min-height: 100vh;
         padding: 12px;
-        display: grid;
-        grid-template-columns: minmax(420px, 36vw) 1fr;
+        display: flex;
+        flex-direction: column;
         gap: 12px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 16px 18px;
+        background: rgba(255, 248, 238, 0.92);
+        border: 1px solid rgba(222, 207, 184, 0.95);
+        border-radius: 18px;
+        box-shadow: 0 12px 30px rgba(78, 58, 39, 0.07);
+        backdrop-filter: blur(8px);
+      }
+
+      .topbar-main {
+        min-width: 0;
+      }
+
+      .topbar-main h1 {
+        margin-bottom: 4px;
+      }
+
+      .topbar-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        border: 1px solid rgba(187, 90, 45, 0.18);
+        background: rgba(187, 90, 45, 0.08);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .topbar-subtitle {
+        margin-top: 0;
+        max-width: 640px;
+        line-height: 1.45;
+      }
+
+      .current-task-bar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
+        gap: 12px;
+        align-items: start;
+        padding: 14px 15px;
+        background: rgba(255, 253, 249, 0.92);
+        border: 1px solid rgba(222, 207, 184, 0.95);
+        border-radius: 16px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+      }
+
+      .current-task-title {
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .current-task-name {
+        min-width: 0;
+        line-height: 1.4;
+      }
+
+      .current-task-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        margin-top: 6px;
+      }
+
+      .current-task-hint {
+        min-width: 0;
+        max-width: 100%;
+        text-align: right;
+        line-height: 1.45;
+      }
+
+      .current-task-hint-label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .current-task-path {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .current-task-meta span,
+      .summary-strip span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .nav-btn {
+        width: auto;
+        margin-bottom: 0;
+        padding: 9px 14px;
+        border: 1px solid rgba(222, 207, 184, 0.92);
+        background: rgba(255, 253, 249, 0.92);
+        color: #6a5c4e;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+      }
+
+      .nav-btn:not(.active):hover {
+        border-color: rgba(187, 90, 45, 0.3);
+        background: rgba(255, 250, 244, 0.96);
+        box-shadow: 0 6px 14px rgba(120, 84, 49, 0.06);
+      }
+
+      .nav-btn.active {
+        background: var(--accent);
+        color: white;
+        border-color: transparent;
+        box-shadow: 0 10px 24px rgba(187, 90, 45, 0.18);
+      }
+
+      .content-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 0;
+      }
+
+      .view {
+        display: none;
+        gap: 12px;
+      }
+
+      .view.active {
+        display: grid;
+      }
+
+      .view-single {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .view-split {
+        grid-template-columns: minmax(360px, 0.95fr) minmax(0, 1.05fr);
+      }
+
+      .view-triple {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(222, 207, 184, 0.65);
+      }
+
+      .section-heading h2,
+      .section-heading .muted {
+        margin: 0;
+      }
+
+      .section-heading .muted {
+        font-size: 12px;
+      }
+
+      .section-heading button {
+        width: auto;
+        margin-bottom: 0;
+        padding: 8px 12px;
+      }
+
+      .summary-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .summary-card {
+        padding: 12px;
+        border: 1px solid rgba(222, 207, 184, 0.9);
+        border-radius: 12px;
+        background: #fffdf9;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+      }
+
+      .summary-card .muted {
+        display: block;
+      }
+
+      .summary-card.is-passive {
+        background: rgba(255, 253, 249, 0.74);
+      }
+
+      .summary-card.is-key {
+        border-color: rgba(187, 90, 45, 0.26);
+        background: linear-gradient(180deg, rgba(255, 245, 237, 0.98), #fffdf9);
+      }
+
+      .summary-label {
+        margin-bottom: 6px;
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .summary-value {
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+
+      .panel-note {
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: #76695b;
+      }
+
+      .task-rail {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .task-callout {
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px dashed rgba(222, 207, 184, 0.95);
+        background: rgba(255, 253, 249, 0.76);
+      }
+
+      .task-callout strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--accent-2);
+      }
+
+      .task-list-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .task-list-header h2,
+      .task-list-header .muted {
+        margin: 0;
+      }
+
+      .workbench-panel {
+        background: linear-gradient(180deg, rgba(255, 249, 241, 0.98), rgba(255, 248, 238, 0.95));
+      }
+
+      .records-panel {
+        background: rgba(255, 249, 241, 0.88);
+      }
+
+      .meta-card {
+        padding: 14px;
+        border: 1px solid rgba(222, 207, 184, 0.9);
+        border-radius: 12px;
+        background: rgba(255, 253, 249, 0.92);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+      }
+
+      .meta-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .meta-card-header strong {
+        font-size: 15px;
+        line-height: 1.4;
+      }
+
+      .meta-goal {
+        margin-bottom: 10px;
+        line-height: 1.55;
+      }
+
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .meta-row {
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(222, 207, 184, 0.45);
+        background: rgba(244, 239, 230, 0.58);
+      }
+
+      .meta-row-wide {
+        grid-column: 1 / -1;
+      }
+
+      .meta-k {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .meta-v {
+        line-height: 1.45;
+        word-break: break-word;
+      }
+
+      .artifact-block-title {
+        margin: 10px 0 6px;
+        font-size: 11px;
+        color: #7a6c5e;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .artifact-pre-soft {
+        background: #2a2623;
+      }
+
+      .run-actions {
+        margin-top: 10px;
+      }
+
+      .run-section-divider {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px dashed var(--line);
+      }
+
+      .run-log-label {
+        margin: 0 0 8px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .action-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .action-grid select,
+      .action-grid button {
+        margin-bottom: 0;
+      }
+
+      .empty-state {
+        padding: 18px;
+        border: 1px dashed rgba(222, 207, 184, 0.9);
+        border-radius: 12px;
+        background: rgba(255, 253, 249, 0.82);
+        line-height: 1.6;
+      }
+
+      .detail-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .compact-panel {
+        min-height: 0;
       }
 
       .panel {
@@ -44,7 +431,7 @@
         border: 1px solid var(--line);
         border-radius: 16px;
         padding: 14px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+        box-shadow: 0 10px 26px rgba(78, 58, 39, 0.06);
         height: 100%;
         min-height: 0;
         overflow: hidden;
@@ -77,8 +464,8 @@
         width: 100%;
         border: 1px solid var(--line);
         border-radius: 10px;
-        padding: 10px;
-        margin-bottom: 8px;
+        padding: 11px 12px;
+        margin-bottom: 10px;
         font: inherit;
         background: #fffdf9;
       }
@@ -91,39 +478,63 @@
 
       .field-label {
         display: block;
-        margin: 6px 0 6px;
-        font-size: 13px;
+        margin: 8px 0 6px;
+        font-size: 12px;
         color: var(--muted);
-        font-weight: 600;
-        letter-spacing: 0.02em;
+        font-weight: 700;
+        letter-spacing: 0.03em;
       }
 
       button {
         border: none;
         background: var(--accent);
         color: white;
-        font-weight: 600;
+        font-weight: 700;
         cursor: pointer;
-        transition: transform 0.12s ease, opacity 0.12s ease;
+        transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease;
+        box-shadow: 0 8px 20px rgba(187, 90, 45, 0.14);
       }
 
       button:hover {
         transform: translateY(-1px);
-        opacity: 0.93;
+        opacity: 0.95;
+      }
+
+      button:active {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      button:focus-visible,
+      .nav-btn:focus-visible,
+      select:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible {
+        outline: 2px solid rgba(47, 107, 115, 0.24);
+        outline-offset: 2px;
       }
 
       .btn-alt {
         background: var(--accent-2);
+        box-shadow: 0 8px 20px rgba(47, 107, 115, 0.14);
+      }
+
+      .btn-tonal {
+        background: rgba(47, 107, 115, 0.12);
+        color: var(--accent-2);
+        border: 1px solid rgba(47, 107, 115, 0.22);
+        box-shadow: none;
       }
 
       .btn-soft {
         background: #7f7060;
+        box-shadow: 0 8px 18px rgba(86, 73, 60, 0.12);
       }
 
       .list {
         max-height: none;
         overflow: auto;
-        border-top: 1px dashed var(--line);
+        border-top: 1px dashed rgba(222, 207, 184, 0.85);
         margin-top: 8px;
         padding-top: 8px;
       }
@@ -133,40 +544,120 @@
       }
 
       .list.exec-list {
-        min-height: 220px;
-        max-height: 38vh;
+        min-height: 180px;
+        max-height: 34vh;
       }
 
       .list.artifact-list {
-        min-height: 220px;
-        max-height: 40vh;
+        min-height: 180px;
+        max-height: 36vh;
       }
 
       .list.run-list {
         min-height: 140px;
-        max-height: 30vh;
+        max-height: 28vh;
       }
 
       .item {
-        padding: 10px;
-        border: 1px solid var(--line);
-        border-radius: 10px;
+        padding: 12px;
+        border: 1px solid rgba(222, 207, 184, 0.92);
+        border-radius: 12px;
         margin-bottom: 8px;
-        background: #fffdf9;
+        background: linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(255, 249, 242, 0.94));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+        transition: border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+      }
+
+      .item:last-child {
+        margin-bottom: 0;
+      }
+
+      .item:hover {
+        border-color: rgba(187, 90, 45, 0.4);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(120, 84, 49, 0.08);
       }
 
       .item.active {
         border-color: var(--accent);
+        box-shadow: 0 10px 24px rgba(187, 90, 45, 0.14);
+      }
+
+      .list-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .list-card-main {
+        min-width: 0;
+      }
+
+      .list-card-title {
+        font-weight: 700;
+        line-height: 1.4;
+      }
+
+      .list-card-subtle {
+        margin-top: 6px;
+        word-break: break-word;
+      }
+
+      .list-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        margin-top: 8px;
+      }
+
+      .list-card-meta span {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .task-item-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .task-item-main {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .task-item-title {
+        font-weight: 700;
+        line-height: 1.35;
+        letter-spacing: 0.01em;
+      }
+
+      .task-item-meta {
+        margin-top: 6px;
+        word-break: break-word;
       }
 
       .tag {
         display: inline-block;
         border-radius: 999px;
-        padding: 2px 8px;
-        font-size: 12px;
+        padding: 3px 9px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
         background: #f8e4d7;
         color: #904022;
         margin-left: 6px;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+
+      .tag.tag-secondary {
+        background: #e5f0f1;
+        color: #26555b;
       }
 
       .grid {
@@ -178,10 +669,13 @@
       pre {
         margin: 0;
         white-space: pre-wrap;
-        background: #1f1c1a;
-        color: #f4f0eb;
+        background: #26211d;
+        color: #efe8e0;
         padding: 10px;
         border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        font-size: 12px;
+        line-height: 1.55;
         max-height: none;
         overflow: auto;
       }
@@ -197,8 +691,9 @@
       }
 
       .muted {
-        color: var(--muted);
-        font-size: 13px;
+        color: #746759;
+        font-size: 12px;
+        line-height: 1.5;
       }
 
       .artifact-meta {
@@ -208,129 +703,327 @@
         margin-bottom: 8px;
       }
 
-      @media (max-width: 900px) {
-        body {
-          overflow: auto;
-        }
+      .artifact-meta > div {
+        word-break: break-word;
+      }
+
+      @media (max-width: 640px) {
         .shell {
-          height: auto;
-          grid-template-columns: 1fr;
-          padding: 10px;
+          padding: 8px;
+          gap: 10px;
         }
+
+        .topbar,
+        .current-task-bar,
         .panel {
-          height: auto;
+          border-radius: 14px;
+        }
+
+        .topbar,
+        .current-task-bar,
+        .panel {
+          padding-left: 12px;
+          padding-right: 12px;
+        }
+
+        .topbar-eyebrow {
+          font-size: 11px;
+          letter-spacing: 0.04em;
+        }
+
+        h1 {
+          font-size: 21px;
+        }
+
+        h2 {
+          font-size: 15px;
+        }
+
+        .section-heading {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .section-heading button {
+          width: 100%;
+        }
+
+        .summary-card,
+        .meta-card,
+        .item,
+        .empty-state,
+        .task-callout {
+          border-radius: 10px;
+        }
+
+        .grid,
+        .action-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .meta-grid,
+        .artifact-meta {
+          grid-template-columns: 1fr;
+        }
+
+        .task-item-top,
+        .list-card-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .tag {
+          margin-left: 0;
+        }
+
+        input,
+        textarea,
+        select,
+        button {
+          padding: 10px 11px;
+        }
+
+        #timeline,
+        #runLogs,
+        .list.exec-list,
+        .list.artifact-list,
+        .list.run-list {
+          max-height: none;
         }
       }
     </style>
   </head>
   <body>
     <div class="shell">
-      <section class="panel">
-        <h1>AI Workbench</h1>
-        <div class="scroll-area">
-          <h2>新建任务</h2>
-          <label class="field-label" for="title">任务标题</label>
-          <input id="title" placeholder="任务标题" />
-          <label class="field-label" for="goal">目标描述</label>
-          <textarea id="goal" placeholder="目标描述"></textarea>
-          <label class="field-label" for="constraints">执行约束（防跑飞）</label>
-          <textarea id="constraints" placeholder="约束（每行一条，可选）"></textarea>
-          <label class="field-label" for="criteria">验收标准（结果定义）</label>
-          <textarea id="criteria" placeholder="验收标准（每行一条，可选）"></textarea>
-          <label class="field-label">预算策略</label>
-          <div class="grid">
-            <div>
-              <label class="field-label" for="hardLimit">硬预算上限</label>
-            <input id="hardLimit" type="number" min="1" step="1" placeholder="硬预算上限" />
-            </div>
-            <div>
-              <label class="field-label" for="softLimit">软预算上限</label>
-            <input id="softLimit" type="number" min="1" step="1" placeholder="软预算上限" />
-            </div>
-            <div>
-              <label class="field-label" for="circuitBreakerAt">熔断阈值</label>
-            <input id="circuitBreakerAt" type="number" min="1" step="1" placeholder="熔断阈值" />
-            </div>
-            <div>
-              <label class="field-label" for="fallbackModel">降级模型</label>
-            <input id="fallbackModel" placeholder="降级模型" />
-            </div>
-          </div>
-          <button id="resetPreset" class="btn-soft">恢复系统预设</button>
-          <button id="create">创建任务</button>
-          <div class="muted" id="createResult"></div>
-
-          <h2 style="margin-top: 16px">任务列表</h2>
-          <button class="btn-soft" id="refreshTasks">刷新</button>
-          <div id="taskList" class="list task-list"></div>
+      <header class="topbar">
+        <div class="topbar-main">
+          <div class="topbar-eyebrow">Task-first workspace</div>
+          <h1>AI Workbench</h1>
+          <div class="muted topbar-subtitle">先进入任务，再按需切到工作台、记录页和运行中心。</div>
         </div>
+        <nav class="nav" aria-label="主导航">
+          <button id="navTasks" class="nav-btn active">任务</button>
+          <button id="navWorkbench" class="nav-btn">工作台</button>
+          <button id="navRecords" class="nav-btn">交付与记录</button>
+          <button id="navRuns" class="nav-btn">运行中心</button>
+        </nav>
+      </header>
+
+      <section class="current-task-bar">
+        <div>
+          <div class="current-task-title" id="currentTaskTitle">未选择任务</div>
+          <div class="current-task-meta muted" id="currentTaskMeta">
+            <span>先创建任务或从列表选择一个任务。</span>
+          </div>
+        </div>
+        <div class="muted current-task-hint" id="currentTaskHint">从任务页进入，选中后会自动跳到工作台。</div>
       </section>
 
-      <section class="panel">
-        <div class="scroll-area">
-          <h2>任务详情</h2>
-          <div id="taskMeta" class="muted">请选择任务</div>
+      <div class="content-stack">
+        <section id="viewTasks" class="view view-split active">
+          <section class="panel">
+            <div class="scroll-area">
+              <div class="section-heading">
+                <h2>新建任务</h2>
+                <div class="muted">先定义目标，再推进执行。</div>
+              </div>
+              <label class="field-label" for="title">任务标题</label>
+              <input id="title" placeholder="任务标题" />
+              <label class="field-label" for="goal">目标描述</label>
+              <textarea id="goal" placeholder="目标描述"></textarea>
+              <label class="field-label" for="constraints">执行约束（防跑飞）</label>
+              <textarea id="constraints" placeholder="约束（每行一条，可选）"></textarea>
+              <label class="field-label" for="criteria">验收标准（结果定义）</label>
+              <textarea id="criteria" placeholder="验收标准（每行一条，可选）"></textarea>
+              <label class="field-label">预算策略</label>
+              <div class="grid">
+                <div>
+                  <label class="field-label" for="hardLimit">硬预算上限</label>
+                  <input id="hardLimit" type="number" min="1" step="1" placeholder="硬预算上限" />
+                </div>
+                <div>
+                  <label class="field-label" for="softLimit">软预算上限</label>
+                  <input id="softLimit" type="number" min="1" step="1" placeholder="软预算上限" />
+                </div>
+                <div>
+                  <label class="field-label" for="circuitBreakerAt">熔断阈值</label>
+                  <input id="circuitBreakerAt" type="number" min="1" step="1" placeholder="熔断阈值" />
+                </div>
+                <div>
+                  <label class="field-label" for="fallbackModel">降级模型</label>
+                  <input id="fallbackModel" placeholder="降级模型" />
+                </div>
+              </div>
+              <button id="resetPreset" class="btn-soft">恢复系统预设</button>
+              <button id="create">创建任务</button>
+              <div class="muted" id="createResult"></div>
+            </div>
+          </section>
 
-          <div class="grid" style="margin-top: 10px">
-            <select id="roleSelect">
-              <option value="Architect">架构师</option>
-              <option value="Designer">设计师</option>
-              <option value="SeniorDeveloper">高级开发</option>
-              <option value="QA">测试工程师</option>
-              <option value="Ops">运维工程师</option>
-              <option value="PM">产品经理</option>
-            </select>
-            <button id="runRole" class="btn-alt">运行角色</button>
-            <button id="approve">PM通过</button>
-            <button id="reject" class="btn-soft">PM驳回</button>
-            <button id="retry" class="btn-alt">重试节点</button>
-            <button id="rollback" class="btn-soft">回滚到检查点</button>
-          </div>
-          <div class="muted" id="opResult"></div>
+          <section class="panel">
+            <div class="scroll-area task-rail">
+              <div class="task-callout muted">
+                <strong>默认入口</strong>
+                在这里创建或切换任务，再进入工作台推进。
+              </div>
+              <div>
+                <div class="task-list-header">
+                  <div>
+                    <h2>任务列表</h2>
+                    <div class="muted">选中后会自动跳到工作台。</div>
+                  </div>
+                  <button class="btn-soft" id="refreshTasks">刷新</button>
+                </div>
+                <div id="taskList" class="list task-list"></div>
+              </div>
+            </div>
+          </section>
+        </section>
 
-          <h2 style="margin-top: 14px">执行记录</h2>
-          <button class="btn-soft" id="refreshExec">刷新执行记录</button>
-          <div id="execList" class="list exec-list"></div>
+        <section id="viewWorkbench" class="view view-split">
+          <section class="panel compact-panel workbench-panel">
+            <div class="scroll-area detail-stack">
+              <div>
+                <div class="section-heading">
+                  <h2>任务详情</h2>
+                  <div class="muted">聚焦当前任务，去掉历史噪音。</div>
+                </div>
+                <div class="summary-strip" id="taskSummaryStrip">
+                  <div class="summary-card muted">请先从任务页选择一个任务。</div>
+                  <div class="summary-card muted">选中后会展示当前角色与预算。</div>
+                  <div class="summary-card muted">工作台只保留推进任务所需信息。</div>
+                </div>
+                <div id="taskMeta" class="empty-state muted" style="margin-top: 12px">请选择任务</div>
+              </div>
 
-          <h2 style="margin-top: 14px">时间线</h2>
-          <button class="btn-soft" id="refreshTimeline">刷新时间线</button>
-          <pre id="timeline"></pre>
+              <div>
+                <div class="section-heading">
+                  <h2>角色操作</h2>
+                  <div class="muted">只保留当前任务需要的动作。</div>
+                </div>
+                <div class="action-grid">
+                  <select id="roleSelect">
+                    <option value="Architect">架构师</option>
+                    <option value="Designer">设计师</option>
+                    <option value="SeniorDeveloper">高级开发</option>
+                    <option value="QA">测试工程师</option>
+                    <option value="Ops">运维工程师</option>
+                    <option value="PM">产品经理</option>
+                  </select>
+                  <button id="runRole">运行当前角色</button>
+                  <button id="approve" class="btn-tonal">PM通过</button>
+                  <button id="reject" class="btn-soft">PM驳回</button>
+                  <button id="retry" class="btn-tonal">重试节点</button>
+                  <button id="rollback" class="btn-soft">回滚到检查点</button>
+                </div>
+              </div>
+            </div>
+          </section>
 
-          <h2 style="margin-top: 14px">角色交付物</h2>
-          <div class="muted" style="margin-bottom: 8px">每个角色执行成功后的交付摘要都在这里，支持直接查看。</div>
-          <button class="btn-soft" id="refreshArtifacts">刷新交付物</button>
-          <div id="artifactList" class="list artifact-list"></div>
-          <div class="muted" id="runHint">
-            若是前后端项目，可在交付物输出里查找启动命令（如 `npm run dev`、`npm run start`）后直接运行体验。
-          </div>
+          <section class="panel compact-panel workbench-panel">
+            <div class="scroll-area detail-stack">
+              <div>
+                <div class="section-heading">
+                  <h2>操作反馈</h2>
+                  <div class="muted">集中展示执行、审批、回滚等结果。</div>
+                </div>
+                <div id="opResult" class="empty-state muted">选中任务后，在这里看执行和审批结果。</div>
+              </div>
+              <div class="empty-state muted" id="workbenchGuide">
+                工作台只保留摘要和角色操作。执行记录、时间线、交付物已移到“交付与记录”。
+              </div>
+            </div>
+          </section>
+        </section>
 
-          <h2 style="margin-top: 14px">运行中心</h2>
-          <div class="muted" style="margin-bottom: 8px">自动识别项目类型并一键运行交付项目（本地执行）。</div>
-          <label class="field-label" for="runCwd">运行目录（可选）</label>
-          <input id="runCwd" placeholder="默认使用当前任务 worktree 目录" />
-          <button class="btn-soft" id="detectRun">识别项目与推荐命令</button>
-          <div class="muted" id="runDetectResult"></div>
-          <label class="field-label" for="runCommand">启动命令</label>
-          <input id="runCommand" placeholder="例如 npm run dev / mvn spring-boot:run" />
-          <div class="grid">
-            <button id="startRun" class="btn-alt">一键启动</button>
-            <button id="stopRun" class="btn-soft">停止选中运行</button>
-          </div>
-          <div class="grid">
-            <button id="detectRunUrl" class="btn-soft">探测可访问地址</button>
-            <button id="openRunUrl" class="btn-alt">一键打开浏览器</button>
-          </div>
-          <div class="muted" id="runUrlResult"></div>
-          <button class="btn-soft" id="refreshRuns">刷新运行列表</button>
-          <div id="runList" class="list run-list"></div>
-          <div class="muted">运行日志</div>
-          <pre id="runLogs"></pre>
-        </div>
-      </section>
+        <section id="viewRecords" class="view view-triple">
+          <section class="panel compact-panel records-panel">
+            <div class="scroll-area">
+              <div class="section-heading">
+                <h2>角色交付物</h2>
+                <button class="btn-soft" id="refreshArtifacts">刷新交付物</button>
+              </div>
+              <div class="muted panel-note">先看结果，再看过程。</div>
+              <div id="artifactList" class="list artifact-list"></div>
+            </div>
+          </section>
+
+          <section class="panel compact-panel records-panel">
+            <div class="scroll-area">
+              <div class="section-heading">
+                <h2>执行记录</h2>
+                <button class="btn-soft" id="refreshExec">刷新执行记录</button>
+              </div>
+              <div class="muted panel-note">保留最近摘要，避免首页堆满日志。</div>
+              <div id="execList" class="list exec-list"></div>
+            </div>
+          </section>
+
+          <section class="panel compact-panel records-panel">
+            <div class="scroll-area">
+              <div class="section-heading">
+                <h2>时间线</h2>
+                <button class="btn-soft" id="refreshTimeline">刷新时间线</button>
+              </div>
+              <div class="muted panel-note">完整事件流保留在这里，按需查看。</div>
+              <pre id="timeline"></pre>
+            </div>
+          </section>
+        </section>
+
+        <section id="viewRuns" class="view view-single">
+          <section class="panel">
+            <div class="scroll-area">
+              <div class="section-heading">
+                <h2>运行中心</h2>
+                <div class="muted">默认使用当前任务 worktree，也支持手动覆盖目录。</div>
+              </div>
+              <div class="muted panel-note" id="runHint">
+                前后端项目可直接用交付物里的启动命令运行体验。
+              </div>
+              <label class="field-label" for="runCwd">运行目录（可选）</label>
+              <input id="runCwd" placeholder="默认使用当前任务 worktree 目录" />
+              <button class="btn-soft" id="detectRun">识别项目与推荐命令</button>
+              <div class="muted" id="runDetectResult"></div>
+              <label class="field-label" for="runCommand">启动命令</label>
+              <input id="runCommand" placeholder="例如 npm run dev / mvn spring-boot:run" />
+              <div class="grid run-actions">
+                <button id="startRun">一键启动</button>
+                <button id="stopRun" class="btn-soft">停止选中运行</button>
+              </div>
+              <div class="grid">
+                <button id="detectRunUrl" class="btn-soft">探测可访问地址</button>
+                <button id="openRunUrl" class="btn-tonal">一键打开浏览器</button>
+              </div>
+              <div class="muted" id="runUrlResult"></div>
+
+              <div class="run-section-divider">
+                <div class="section-heading">
+                  <h2>运行列表</h2>
+                  <button class="btn-soft" id="refreshRuns">刷新运行列表</button>
+                </div>
+                <div id="runList" class="list run-list"></div>
+              </div>
+
+              <div class="run-section-divider">
+                <div class="muted run-log-label">运行日志</div>
+                <pre id="runLogs"></pre>
+              </div>
+            </div>
+          </section>
+        </section>
+      </div>
     </div>
 
     <script>
-      const state = { taskId: null, currentTask: null, preset: null, selectedRunId: null, detectedRunUrl: "" };
+      const state = {
+        taskId: null,
+        currentTask: null,
+        preset: null,
+        selectedRunId: null,
+        detectedRunUrl: "",
+        activeView: "tasks"
+      };
       const $ = (id) => document.getElementById(id);
       const roleLabel = {
         system: "系统",
@@ -382,6 +1075,141 @@
         const el = $("opResult");
         el.style.color = isError ? "#b33a16" : "#615547";
         el.textContent = message || "";
+        if (!message) {
+          el.className = "empty-state muted";
+          el.textContent = "选中任务后，在这里看执行和审批结果。";
+          return;
+        }
+        el.className = "empty-state";
+      }
+
+      function renderCurrentTaskBar(task) {
+        const titleEl = $("currentTaskTitle");
+        const metaEl = $("currentTaskMeta");
+        const hintEl = $("currentTaskHint");
+
+        if (!task) {
+          titleEl.textContent = "未选择任务";
+          metaEl.innerHTML = `<span>先创建或选择一个任务。</span>`;
+          hintEl.innerHTML = `
+            <span class="current-task-hint-label">当前上下文</span>
+            <span class="current-task-path">从任务页进入，选中后会自动跳到工作台。</span>
+          `;
+          return;
+        }
+
+        const currentRole = task.roles[Math.min(task.currentRoleIndex, task.roles.length - 1)];
+        titleEl.innerHTML = `<span class="current-task-name">${task.title}</span><span class="tag">${textStatus(task.status)}</span>`;
+        metaEl.innerHTML = `
+          <span>当前角色：${textRole(currentRole)}</span>
+          <span>预算消耗：${task.budgetConsumed}</span>
+          <span>分支：${task.branchName || "-"}</span>
+        `;
+        hintEl.innerHTML = `
+          <span class="current-task-hint-label">Worktree</span>
+          <span class="current-task-path">${task.worktreePath || "当前任务暂无 worktree 信息。"}</span>
+        `;
+      }
+
+      function renderTaskSummary(task) {
+        const root = $("taskSummaryStrip");
+        if (!task) {
+          root.innerHTML = `
+            <div class="summary-card is-passive muted">先从任务页选择任务。</div>
+            <div class="summary-card is-passive muted">这里会显示当前角色和预算。</div>
+            <div class="summary-card is-passive muted">工作台只保留推进所需信息。</div>
+          `;
+          return;
+        }
+
+        const currentRole = task.roles[Math.min(task.currentRoleIndex, task.roles.length - 1)];
+        root.innerHTML = `
+          <div class="summary-card is-key">
+            <div class="summary-label">当前角色</div>
+            <div class="summary-value">${textRole(currentRole)}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">任务状态</div>
+            <div class="summary-value">${textStatus(task.status)}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">预算消耗</div>
+            <div class="summary-value">${task.budgetConsumed}</div>
+          </div>
+        `;
+      }
+
+      function renderEmptyTaskMeta() {
+        renderTaskSummary(null);
+        $("taskMeta").className = "empty-state muted";
+        $("taskMeta").textContent = "先从任务页选择任务，再回到工作台继续。";
+      }
+
+      function setActiveView(view) {
+        state.activeView = view;
+        const views = {
+          tasks: "viewTasks",
+          workbench: "viewWorkbench",
+          records: "viewRecords",
+          runs: "viewRuns"
+        };
+        Object.entries(views).forEach(([key, id]) => {
+          $(id).classList.toggle("active", key === view);
+        });
+        $("navTasks").classList.toggle("active", view === "tasks");
+        $("navWorkbench").classList.toggle("active", view === "workbench");
+        $("navRecords").classList.toggle("active", view === "records");
+        $("navRuns").classList.toggle("active", view === "runs");
+      }
+
+      async function selectTask(taskId, nextView = "workbench") {
+        state.taskId = taskId;
+        await loadTaskDetail(taskId);
+        await loadTasks();
+        if (nextView === "records") {
+          await loadExecutions();
+          await loadTimeline();
+          await loadArtifacts();
+        }
+        setActiveView(nextView);
+      }
+
+      function ensureTaskContext(view) {
+        if (state.taskId) return true;
+        if (view === "workbench") {
+          renderEmptyTaskMeta();
+          setOpResult("");
+        }
+        if (view === "records") {
+          $("artifactList").innerHTML = `<div class="item muted">先从任务页选择任务，再看交付物。</div>`;
+          $("execList").innerHTML = `<div class="item muted">先从任务页选择任务，再看执行记录。</div>`;
+          $("timeline").textContent = "先从任务页选择任务，再看时间线。";
+        }
+        return false;
+      }
+
+      async function handleViewChange(view) {
+        setActiveView(view);
+        if (view === "tasks") {
+          await loadTasks();
+          return;
+        }
+        if (view === "workbench") {
+          if (!ensureTaskContext(view)) return;
+          await loadTaskDetail(state.taskId);
+          return;
+        }
+        if (view === "records") {
+          if (!ensureTaskContext(view)) return;
+          await loadExecutions();
+          await loadTimeline();
+          await loadArtifacts();
+          return;
+        }
+        if (view === "runs") {
+          await loadRuns();
+          await loadRunLogs();
+        }
       }
 
       function setRunUrlResult(message, isError = false) {
@@ -447,18 +1275,26 @@
         const tasks = await api("/tasks");
         const root = $("taskList");
         root.innerHTML = "";
+        if (!tasks.length) {
+          root.innerHTML = `<div class="item muted">暂无任务。先创建一个任务开始推进。</div>`;
+          return;
+        }
         tasks.forEach((task) => {
           const node = document.createElement("div");
           node.className = `item ${task.id === state.taskId ? "active" : ""}`;
           const currentRole = task.roles?.[Math.min(task.currentRoleIndex, (task.roles?.length ?? 1) - 1)];
-          node.innerHTML = `<strong>${task.title}</strong><span class="tag">${textStatus(task.status)}</span><div class="muted">${task.id} · 当前角色：${textRole(currentRole)}</div>`;
+          node.innerHTML = `
+            <div class="task-item-top">
+              <div class="task-item-main">
+                <div class="task-item-title">${task.title}</div>
+                <div class="muted task-item-meta">${task.id}</div>
+              </div>
+              <span class="tag">${textStatus(task.status)}</span>
+            </div>
+            <div class="muted task-item-meta">当前角色：${textRole(currentRole)}${task.branchName ? ` · ${task.branchName}` : ""}</div>
+          `;
           node.onclick = async () => {
-            state.taskId = task.id;
-            await loadTaskDetail(task.id);
-            await loadTasks();
-            await loadExecutions();
-            await loadTimeline();
-            await loadArtifacts();
+            await selectTask(task.id, "workbench");
           };
           root.appendChild(node);
         });
@@ -467,15 +1303,38 @@
       function showTaskMeta(task) {
         const currentRole = task.roles[Math.min(task.currentRoleIndex, task.roles.length - 1)];
         $("roleSelect").value = currentRole;
+        renderTaskSummary(task);
+        $("taskMeta").className = "meta-card";
         $("taskMeta").innerHTML = `
-          <div><strong>${task.title}</strong></div>
-          <div>目标: ${task.goal}</div>
-          <div>当前角色: ${textRole(currentRole)}</div>
-          <div>预算消耗: ${task.budgetConsumed}</div>
-          <div>任务仓库: ${task.repoPath || "-"}</div>
-          <div>分支: ${task.branchName}</div>
-          <div>worktree: ${task.worktreePath}</div>
+          <div class="meta-card-header">
+            <strong>${task.title}</strong>
+            <span class="tag tag-secondary">${textStatus(task.status)}</span>
+          </div>
+          <div class="muted meta-goal">${task.goal}</div>
+          <div class="meta-grid muted">
+            <div class="meta-row">
+              <span class="meta-k">任务仓库</span>
+              <div class="meta-v">${task.repoPath || "-"}</div>
+            </div>
+            <div class="meta-row">
+              <span class="meta-k">分支</span>
+              <div class="meta-v">${task.branchName || "-"}</div>
+            </div>
+            <div class="meta-row">
+              <span class="meta-k">当前角色</span>
+              <div class="meta-v">${textRole(currentRole)}</div>
+            </div>
+            <div class="meta-row">
+              <span class="meta-k">预算消耗</span>
+              <div class="meta-v">${task.budgetConsumed}</div>
+            </div>
+            <div class="meta-row meta-row-wide">
+              <span class="meta-k">Worktree</span>
+              <div class="meta-v">${task.worktreePath || "-"}</div>
+            </div>
+          </div>
         `;
+        renderCurrentTaskBar(task);
       }
 
       async function loadTaskDetail(taskId) {
@@ -492,10 +1351,17 @@
       }
 
       async function loadExecutions() {
-        if (!state.taskId) return;
+        if (!state.taskId) {
+          $("execList").innerHTML = `<div class="item muted">请先选择任务。</div>`;
+          return;
+        }
         const rows = await api(`/tasks/${state.taskId}/executions`);
         const root = $("execList");
         root.innerHTML = "";
+        if (!rows.length) {
+          root.innerHTML = `<div class="item muted">暂无执行记录。</div>`;
+          return;
+        }
         rows
           .slice()
           .reverse()
@@ -503,20 +1369,32 @@
             const node = document.createElement("div");
             node.className = "item";
             node.innerHTML = `
-            <div><strong>${textRole(row.role)}</strong> <span class="tag">${textStatus(row.status)}</span></div>
-            <div class="muted">attempt=${row.attempt} cost=${row.estimatedCost} · 审批=${textStatus(row.reviewStatus || "PendingPM")}</div>
-            <pre>${(row.stdout || row.stderr || "").slice(0, 240)}</pre>
-          `;
+              <div class="list-card-header">
+                <div class="list-card-main">
+                  <div class="list-card-title">${textRole(row.role)}</div>
+                  <div class="muted list-card-subtle">执行尝试 #${row.attempt ?? "-"}</div>
+                </div>
+                <span class="tag">${textStatus(row.status)}</span>
+              </div>
+              <div class="list-card-meta muted">
+                <span>成本：${row.estimatedCost}</span>
+                <span>审批：${textStatus(row.reviewStatus || "PendingPM")}</span>
+              </div>
+              <pre>${(row.stdout || row.stderr || "").slice(0, 240)}</pre>
+            `;
             root.appendChild(node);
           });
       }
 
       async function loadTimeline() {
-        if (!state.taskId) return;
+        if (!state.taskId) {
+          $("timeline").textContent = "请先选择任务。";
+          return;
+        }
         const rows = await api(`/tasks/${state.taskId}/timeline`);
-        $("timeline").textContent = rows
-          .map((r) => `[${r.timestamp}] ${r.type} (${textRole(r.actor)}) ${r.detail}`)
-          .join("\n");
+        $("timeline").textContent = rows.length
+          ? rows.map((r) => `[${r.timestamp}] ${r.type} (${textRole(r.actor)}) ${r.detail}`).join("\n")
+          : "暂无时间线。";
       }
 
       async function loadArtifacts() {
@@ -547,9 +1425,9 @@
                 <div>checkpoint: ${artifact.checkpointCommit ?? "-"}</div>
                 <div>交付物目录: ${artifact.artifactPath ?? "-"}</div>
               </div>
-              <div class="muted" style="margin-bottom:6px">差异摘要</div>
-              <pre style="margin-bottom:8px">${artifact.diffSummary || "无"}</pre>
-              <div class="muted" style="margin-bottom:6px">交付输出</div>
+              <div class="artifact-block-title">差异摘要</div>
+              <pre class="artifact-pre-soft">${artifact.diffSummary || "无"}</pre>
+              <div class="artifact-block-title">交付输出</div>
               <pre>${outputText}</pre>
             `;
             root.appendChild(node);
@@ -589,10 +1467,18 @@
           const node = document.createElement("div");
           node.className = `item ${run.id === state.selectedRunId ? "active" : ""}`;
           node.innerHTML = `
-            <div><strong>${run.command}</strong><span class="tag">${textRunStatus(run.status)}</span></div>
-            <div class="muted">${run.id}</div>
-            <div class="muted">类型：${run.projectType} · PID：${run.pid ?? "-"}</div>
-            <div class="muted">目录：${run.cwd}</div>
+            <div class="list-card-header">
+              <div class="list-card-main">
+                <div class="list-card-title">${run.command}</div>
+                <div class="muted list-card-subtle">${run.id}</div>
+              </div>
+              <span class="tag tag-secondary">${textRunStatus(run.status)}</span>
+            </div>
+            <div class="list-card-meta muted">
+              <span>类型：${run.projectType}</span>
+              <span>PID：${run.pid ?? "-"}</span>
+            </div>
+            <div class="muted list-card-subtle">目录：${run.cwd}</div>
           `;
           node.onclick = async () => {
             state.selectedRunId = run.id;
@@ -650,12 +1536,10 @@
               }
             })
           });
-          state.taskId = task.id;
-          state.currentTask = task;
           $("createResult").textContent = `创建成功: ${task.id}`;
           setOpResult("");
-          showTaskMeta(task);
           await loadTasks();
+          await selectTask(task.id, "workbench");
         } catch (err) {
           $("createResult").textContent = err.message;
         }
@@ -760,6 +1644,10 @@
       $("refreshExec").onclick = loadExecutions;
       $("refreshTimeline").onclick = loadTimeline;
       $("refreshArtifacts").onclick = loadArtifacts;
+      $("navTasks").onclick = () => handleViewChange("tasks");
+      $("navWorkbench").onclick = () => handleViewChange("workbench");
+      $("navRecords").onclick = () => handleViewChange("records");
+      $("navRuns").onclick = () => handleViewChange("runs");
       $("refreshRuns").onclick = async () => {
         await loadRuns();
         await loadRunLogs();
@@ -833,6 +1721,10 @@
         applyPresetToForm(state.preset);
         setOpResult("已恢复系统预设。");
       };
+
+      renderCurrentTaskBar(null);
+      renderEmptyTaskMeta();
+      setOpResult("");
 
       loadPreset()
         .then(() => loadTasks())
